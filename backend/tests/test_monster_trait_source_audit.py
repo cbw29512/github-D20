@@ -21,6 +21,18 @@ def test_trait_parser_preserves_multiple_printed_headings() -> None:
     ) == ["Pack Tactics", "Sunlight Sensitivity"]
 
 
+def test_trait_parser_normalizes_parenthetical_usage_with_internal_punctuation() -> None:
+    assert parse_trait_names(
+        "Amphibious. Legendary Resistance (3/Day, or 4/Day in Lair). The dragon can choose to succeed instead."
+    ) == ["Amphibious", "Legendary Resistance"]
+
+
+def test_shared_heading_parser_can_preserve_printed_annotations() -> None:
+    assert parse_trait_names("Rampage (1/Day). The gnoll moves and attacks.", preserve_annotations=True) == [
+        "Rampage (1/Day)"
+    ]
+
+
 def test_wolf_pack_tactics_is_source_derived_and_runtime_backed() -> None:
     wolf = _monster("Wolf")
     assert wolf.source_trait_names == ["Pack Tactics"]

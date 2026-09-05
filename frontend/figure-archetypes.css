@@ -135,3 +135,10 @@
 .stick-figure[data-form="plant"][data-detail="violet-fungus"] .legs{display:none}
 .stick-figure[data-form="plant"][data-detail="violet-fungus"] .feature-one{display:block;width:35px;height:5px;left:12px;top:89px;background:currentColor;border-radius:50%}
 
+/* Fish: horizontal body, pectoral fin, dorsal fin, and a vertical tail. */
+.stick-figure[data-form="aquatic-fish"] .head{width:25px;height:18px;left:0;top:45px;border:4px solid currentColor;border-radius:70% 35% 35% 70%;background:transparent}
+.stick-figure[data-form="aquatic-fish"] .body{width:43px;height:17px;left:19px;top:46px;border-radius:55%}
+.stick-figure[data-form="aquatic-fish"] .arms{width:21px;height:5px;left:25px;top:61px;transform:rotate(30deg)}.stick-figure[data-form="aquatic-fish"] .legs{display:none}
+.stick-figure[data-form="aquatic-fish"] .feature-one{display:block;width:15px;height:15px;left:38px;top:34px;background:currentColor;clip-path:polygon(0 100%,55% 0,100% 100%)}
+.stick-figure[data-form="aquatic-fish"] .tail{display:block;width:25px;height:30px;right:-21px;top:39px;background:currentColor;clip-path:polygon(0 42%,48% 42%,100% 0,82% 50%,100% 100%,48% 58%,0 58%)}
+.stick-figure[data-form="aquatic-fish"][data-detail="shark"] .feature-two{display:block;width:10px;height:16px;left:18px;top:47px;background:transparent;border-left:2px solid currentColor;box-shadow:4px 0 0 currentColor,8px 0 0 currentColor}

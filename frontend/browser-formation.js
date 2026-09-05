@@ -4,6 +4,7 @@
   const HERO_BACK = 0, HERO_FRONT = 5, MONSTER_FRONT = 10, MONSTER_BACK = 15;
   const attacks = (template) => template?.attacks || [];
   const alive = (member) => member.state.is_alive && !member.state.is_dead && member.state.current_hp > 0;
+  const X = () => window.IRON_PIT_BROWSER_RESOURCES || { available: () => true };
 
   function hasRangedWeaponOffense(template) {
     return attacks(template).some((attack) => attack.kind === "ranged" && Number.isFinite(attack.long) && attack.long > 5);
@@ -49,6 +50,9 @@
     if (!attack.forbidSelfGrappledTarget) return true;
     return !target.state.grapple_sources.some((source) => source.source_id === member.combatant_id);
   }
+  function resourceAvailable(member, attack) {
+    return !attack.resourceId || X().available(member.state, attack.resourceId, attack.resourceCost || 1);
+  }
   function attackDistance(member, target, attack) {
     const actual = Math.abs(member.position_ft - target.position_ft);
     if (attack.kind === "melee") return Math.min(actual, attack.reach || 5);
@@ -56,17 +60,20 @@
     if (!Number.isFinite(normal)) throw new Error(`Ranged attack ${attack.id} has no normal range.`);
     return Math.min(actual, normal);
   }
-  function saveDistance(member, target, range) {
-    return Math.min(Math.abs(member.position_ft - target.position_ft), range);
-  }
+  function saveDistance(member, target, range) { return Math.min(Math.abs(member.position_ft - target.position_ft), range); }
   function chooseAttack(member, setup, ids, kind = null, preferBackline = false) {
     const allowed = new Set(ids);
-    const profiles = attacks(member.state.template).filter((attack) => allowed.has(attack.id) && (!kind || attack.kind === kind));
+    const profiles = attacks(member.state.template).filter((attack) => allowed.has(attack.id)
+      && (!kind || attack.kind === kind) && resourceAvailable(member, attack));
     for (const target of targetOrder(member, setup, preferBackline)) {
       const attack = profiles.find((profile) => targetAllowed(member, target, profile));
       if (attack) return { target, attack, distance: attackDistance(member, target, attack) };
     }
     return null;
+  }
+  function chooseResourceBackedAttack(member, setup) {
+    const ids = attacks(member.state.template).filter((attack) => attack.resourceId).map((attack) => attack.id);
+    return ids.length ? chooseAttack(member, setup, ids) : null;
   }
   function chooseStandardAttack(member, setup) {
     const ids = attacks(member.state.template).map((attack) => attack.id);
@@ -77,7 +84,8 @@
     return chooseAttack(member, setup, ids, "melee") || chooseAttack(member, setup, ids, "ranged");
   }
   function flexibleSlotHasBoth(member, ids) {
-    const allowed = new Set(ids), kinds = new Set(attacks(member.state.template).filter((a) => allowed.has(a.id)).map((a) => a.kind));
+    const allowed = new Set(ids), kinds = new Set(attacks(member.state.template)
+      .filter((attack) => allowed.has(attack.id) && resourceAvailable(member, attack)).map((attack) => attack.kind));
     return kinds.has("melee") && kinds.has("ranged");
   }
   function backlineHoldsPosition(member, setup) {
@@ -87,6 +95,7 @@
   window.IRON_PIT_BROWSER_FORMATION = {
     hasRangedWeaponOffense, hasTrueRangeOffense, usesBackline, isBackline, startingPosition,
     targetOrder, hasFrontlineTarget, hasBacklineTarget, alliedFrontlineActive, targetAllowed,
-    attackDistance, saveDistance, chooseAttack, chooseStandardAttack, flexibleSlotHasBoth, backlineHoldsPosition,
+    attackDistance, saveDistance, chooseAttack, chooseResourceBackedAttack, chooseStandardAttack,
+    flexibleSlotHasBoth, backlineHoldsPosition,
   };
 })();

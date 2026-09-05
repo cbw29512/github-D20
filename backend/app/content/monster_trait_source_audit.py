@@ -4,6 +4,7 @@ import logging
 import re
 from functools import lru_cache
 
+from app.content.monster_combat_scope import combat_math_relevant, feature_blocks
 from app.content.monster_catalog import load_monster_rows
 from app.domain.models import CombatantTemplate
 from app.domain.traits import CombatTrait
@@ -20,14 +21,20 @@ _ARENA_NEUTRAL_TRAITS = frozenset({
     "Agile", "Amphibious", "Beast of Burden", "False Appearance", "Flyby", "Hellish Restoration",
     "Hold Breath", "Ice Walk", "Illumination", "Jumper", "Keen Hearing", "Keen Hearing and Sight",
     "Keen Hearing and Smell", "Keen Sight", "Keen Smell", "Mimicry", "Running Leap", "Spider Climb",
-    "Standing Leap", "Sunlight Sensitivity", "Training", "Web Walker",
+    "Standing Leap", "Sunlight Sensitivity", "Training", "Water Breathing", "Web Walker",
 })
 
 
+def _normalized_heading(value: str) -> str:
+    return re.sub(r"\s*\([^)]*\)$", "", value).strip()
+
+
 def _is_heading(value: str) -> bool:
-    if not value or len(value) > 80 or any(mark in value for mark in ",:;!?"):
+    if not value or len(value) > 80:
         return False
-    plain = re.sub(r"\s*\([^)]*\)$", "", value).strip()
+    plain = _normalized_heading(value)
+    if any(mark in plain for mark in ",:;!?"):
+        return False
     words = plain.split()
     if not words:
         return False
@@ -39,7 +46,7 @@ def _is_heading(value: str) -> bool:
     return True
 
 
-def parse_trait_names(source_traits: object) -> list[str]:
+def parse_trait_names(source_traits: object, *, preserve_annotations: bool = False) -> list[str]:
     text = str(source_traits or "").strip()
     if not text:
         return []
@@ -47,10 +54,21 @@ def parse_trait_names(source_traits: object) -> list[str]:
     for sentence in re.split(r"(?<=\.)\s+", text):
         candidate = sentence[:-1].strip() if sentence.endswith(".") else ""
         if _is_heading(candidate):
-            names.append(candidate)
+            names.append(candidate if preserve_annotations else _normalized_heading(candidate))
     if not names:
         raise ValueError(f"SRD trait headings could not be parsed from: {text!r}")
     return names
+
+
+def combat_relevant_trait_names(source_traits: object) -> set[str]:
+    """Return unmodeled trait headings whose prose can change Iron Pit combat math."""
+    annotated = parse_trait_names(source_traits, preserve_annotations=True)
+    blocks = feature_blocks(source_traits, annotated)
+    return {
+        _normalized_heading(name)
+        for name in annotated
+        if combat_math_relevant(blocks[name])
+    }
 
 
 def trait_issues(template: CombatantTemplate, row: dict[str, object]) -> list[str]:
@@ -66,10 +84,12 @@ def trait_issues(template: CombatantTemplate, row: dict[str, object]) -> list[st
         elif runtime_has and not source_has:
             issues.append(f"trait-source-missing:{runtime_trait.value}")
     certified = set(_MODELED_TRAITS) | set(_ARENA_NEUTRAL_TRAITS)
+    relevant = combat_relevant_trait_names(row.get("traits", ""))
     for name in expected:
-        if name not in certified:
-            slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
-            issues.append(f"uncertified-trait:{slug}")
+        if name in certified or name not in relevant:
+            continue
+        slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+        issues.append(f"uncertified-trait:{slug}")
     return issues
 
 

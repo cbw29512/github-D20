@@ -4,6 +4,7 @@ import logging
 import re
 from functools import lru_cache
 
+from app.content.monster_combat_scope import combat_math_relevant, feature_blocks
 from app.content.monster_catalog import load_monster_rows
 from app.content.monster_trait_source_audit import parse_trait_names
 from app.domain.models import CombatantTemplate
@@ -25,18 +26,34 @@ def _slug(name: str) -> str:
 
 
 def parse_bonus_action_names(source_bonus_actions: object) -> list[str]:
-    return parse_trait_names(source_bonus_actions)
+    return parse_trait_names(source_bonus_actions, preserve_annotations=True)
+
+
+def arena_neutral_bonus_action_source(source_bonus_actions: object) -> bool:
+    names = parse_bonus_action_names(source_bonus_actions)
+    if not names:
+        return True
+    blocks = feature_blocks(source_bonus_actions, names)
+    return all(
+        _base_name(name) in _ARENA_NEUTRAL_BONUS_ACTIONS or not combat_math_relevant(blocks[name])
+        for name in names
+    )
 
 
 def bonus_action_issues(template: CombatantTemplate, row: dict[str, object]) -> list[str]:
-    """Fail closed when a printed outcome-changing bonus action lacks runtime semantics."""
-    expected = parse_bonus_action_names(row.get("bonusActions", ""))
+    """Fail closed only when a printed bonus action changes Iron Pit combat math."""
+    source = row.get("bonusActions", "")
+    expected = parse_bonus_action_names(source)
     issues: list[str] = []
     if template.source_bonus_action_names != expected:
         issues.append("source-bonus-action-fingerprint-mismatch")
+    if not expected:
+        return issues
+    blocks = feature_blocks(source, expected)
     for name in expected:
-        if _base_name(name) not in _ARENA_NEUTRAL_BONUS_ACTIONS:
-            issues.append(f"uncertified-bonus-action:{_slug(name)}")
+        if _base_name(name) in _ARENA_NEUTRAL_BONUS_ACTIONS or not combat_math_relevant(blocks[name]):
+            continue
+        issues.append(f"uncertified-bonus-action:{_slug(name)}")
     return issues
 
 

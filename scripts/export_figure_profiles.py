@@ -4,7 +4,7 @@ import json
 import logging
 from pathlib import Path
 
-from app.content.figure_profiles import MONSTER_FIGURE_PROFILES
+from app.content.figure_profile_registry import reviewed_monster_figure_profiles
 
 logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,7 +12,7 @@ DESTINATION = ROOT / "frontend" / "figure-profiles.js"
 
 
 def render() -> str:
-    payload = json.dumps(MONSTER_FIGURE_PROFILES, separators=(",", ":"), sort_keys=True)
+    payload = json.dumps(reviewed_monster_figure_profiles(), separators=(",", ":"), sort_keys=True)
     return (
         "/* GENERATED from the reviewed RAW-ready monster figure registry. Do not hand-edit. */\n"
         "(() => {\n  \"use strict\";\n"
@@ -23,8 +23,9 @@ def render() -> str:
 
 def main() -> None:
     try:
+        profiles = reviewed_monster_figure_profiles()
         DESTINATION.write_text(render(), encoding="utf-8")
-        logger.info("Exported %s reviewed monster figure profiles.", len(MONSTER_FIGURE_PROFILES))
+        logger.info("Exported %s reviewed monster figure profiles.", len(profiles))
     except Exception:
         logger.exception("Monster figure profile export failed.")
         raise

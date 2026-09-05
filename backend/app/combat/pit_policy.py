@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from app.combat.attack_legality import attack_allowed_against
+from app.combat.attack_resources import attack_resource_available
 from app.combat.encounter_targeting import combatant_distance, living_opponents
 from app.combat.formation import uses_backline
 from app.domain.encounters import EncounterCombatant, EncounterSetup
@@ -67,12 +68,13 @@ def save_distance(attacker: EncounterCombatant, target: EncounterCombatant, rang
 
 def _attack_profiles(attacker: EncounterCombatant, allowed_ids: list[str], kind: WeaponAttackKind | None):
     allowed = set(allowed_ids)
-    profiles = [
+    return [
         attack
         for attack in [attacker.state.template.weapon_attack, *attacker.state.template.alternate_weapon_attacks]
-        if attack.id in allowed and (kind is None or attack.weapon.attack_kind is kind)
+        if attack.id in allowed
+        and (kind is None or attack.weapon.attack_kind is kind)
+        and attack_resource_available(attacker.state, attack)
     ]
-    return profiles
 
 
 def choose_attack(
@@ -83,7 +85,7 @@ def choose_attack(
     kind: WeaponAttackKind | None = None,
     prefer_backline: bool = False,
 ) -> tuple[EncounterCombatant, WeaponAttack, int] | None:
-    """Choose a legal attack by Pit formation role; ordinary movement never blocks the choice."""
+    """Choose a legal attack by Pit formation role; depleted limited-use attacks are unavailable."""
     try:
         profiles = _attack_profiles(attacker, allowed_ids, kind)
         for target in target_order(attacker, setup, prefer_backline=prefer_backline):
@@ -94,6 +96,17 @@ def choose_attack(
     except Exception as exc:
         logger.exception("Pit attack selection failed for %s.", attacker.combatant_id)
         raise RuntimeError("Pit attack selection could not be evaluated.") from exc
+
+
+def choose_resource_backed_attack(
+    attacker: EncounterCombatant,
+    setup: EncounterSetup,
+) -> tuple[EncounterCombatant, WeaponAttack, int] | None:
+    ids = [
+        attack.id for attack in [attacker.state.template.weapon_attack, *attacker.state.template.alternate_weapon_attacks]
+        if attack.resource_id is not None
+    ]
+    return choose_attack(attacker, setup, ids) if ids else None
 
 
 def choose_standard_attack(

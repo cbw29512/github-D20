@@ -4,6 +4,7 @@ import pytest
 
 from app.content.monster_catalog import load_monster_rows
 from app.content.monster_reaction_source_audit import (
+    arena_neutral_reaction_source,
     parse_parry_ac_bonus,
     parse_reaction_names,
     parse_redirect_attack_range,
@@ -108,3 +109,20 @@ def test_spell_trigger_reaction_remains_uncertified_until_runtime_semantics_exis
 def test_reaction_fingerprint_drift_is_detected() -> None:
     wolf = _monster("Wolf").model_copy(update={"source_reaction_names": ["Parry"]})
     assert "source-reaction-fingerprint-mismatch" in reaction_issues(wolf, _row("Wolf"))
+
+
+def test_shrieker_audible_only_reaction_is_arena_neutral() -> None:
+    source = _row("Shrieker Fungus")["reactions"]
+
+    assert "until the shrieker dies" in str(source)
+    assert arena_neutral_reaction_source(source)
+
+
+def test_audible_reaction_with_combat_math_still_fails_closed() -> None:
+    source = (
+        "Alarm. Trigger: A creature moves within 30 feet of the monster. "
+        "Response: The monster emits a shriek audible within 300 feet of itself "
+        "for 1 minute or until the monster dies. The triggering creature takes 1 Psychic damage."
+    )
+
+    assert not arena_neutral_reaction_source(source)

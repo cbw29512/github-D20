@@ -1,0 +1,122 @@
+{
+  "schema_version": 3,
+  "ruleset": "D&D 2024 Free Rules / SRD 5.2.1",
+  "policy": "Give each canonical caster enough distinct combat-relevant leveled spells to match its level-20 slot capacity by spell level, plus a compact set of combat cantrips. Prefer legal cross-class spell reuse and generic engine primitives; defer high-complexity battlefield spells unless needed.",
+  "full_caster_slot_shape": {"1": 4, "2": 3, "3": 3, "4": 3, "5": 3, "6": 2, "7": 2, "8": 1, "9": 1},
+  "half_caster_slot_shape": {"1": 4, "2": 3, "3": 3, "4": 3, "5": 2},
+  "preferred_primitives": [
+    "auto-hit-damage", "save-half-damage", "spell-attack", "healing",
+    "flat-buff-debuff", "simple-condition", "next-hit-rider"
+  ],
+  "classes": {
+    "bard": {
+      "cantrips": ["starry-wisp", "thunderclap", "true-strike", "vicious-mockery"],
+      "levels": {
+        "1": ["healing-word", "dissonant-whispers", "faerie-fire", "thunderwave"],
+        "2": ["aid", "blindness-deafness", "hold-person"],
+        "3": ["dispel-magic", "mass-healing-word", "slow"],
+        "4": ["freedom-of-movement", "greater-invisibility", "phantasmal-killer"],
+        "5": ["hold-monster", "mass-cure-wounds", "synaptic-static"],
+        "6": ["eyebite", "ottos-irresistible-dance"],
+        "7": ["prismatic-spray", "regenerate"],
+        "8": ["power-word-stun"],
+        "9": ["power-word-heal"]
+      }
+    },
+    "cleric": {
+      "cantrips": ["guidance", "resistance", "sacred-flame"],
+      "levels": {
+        "1": ["bless", "cure-wounds", "guiding-bolt", "healing-word"],
+        "2": ["aid", "blindness-deafness", "spiritual-weapon"],
+        "3": ["dispel-magic", "mass-healing-word", "spirit-guardians"],
+        "4": ["death-ward", "freedom-of-movement", "guardian-of-faith"],
+        "5": ["flame-strike", "greater-restoration", "mass-cure-wounds"],
+        "6": ["harm", "heal"],
+        "7": ["fire-storm", "regenerate"],
+        "8": ["holy-aura"],
+        "9": ["mass-heal"]
+      }
+    },
+    "druid": {
+      "cantrips": ["poison-spray", "produce-flame", "starry-wisp", "thunderclap"],
+      "levels": {
+        "1": ["cure-wounds", "faerie-fire", "healing-word", "thunderwave"],
+        "2": ["hold-person", "lesser-restoration", "moonbeam"],
+        "3": ["call-lightning", "dispel-magic", "protection-from-energy"],
+        "4": ["blight", "freedom-of-movement", "ice-storm"],
+        "5": ["cone-of-cold", "greater-restoration", "mass-cure-wounds"],
+        "6": ["heal", "sunbeam"],
+        "7": ["fire-storm", "regenerate"],
+        "8": ["sunburst"],
+        "9": ["foresight"]
+      }
+    },
+    "paladin": {
+      "cantrips": [],
+      "levels": {
+        "1": ["cure-wounds", "divine-favor", "heroism", "shield-of-faith"],
+        "2": ["aid", "lesser-restoration", "magic-weapon"],
+        "3": ["blinding-smite", "crusaders-mantle", "elemental-weapon"],
+        "4": ["death-ward", "freedom-of-movement", "staggering-smite"],
+        "5": ["banishing-smite", "destructive-wave"]
+      }
+    },
+    "ranger": {
+      "cantrips": [],
+      "levels": {
+        "1": ["cure-wounds", "ensnaring-strike", "hail-of-thorns", "hunters-mark"],
+        "2": ["aid", "barkskin", "magic-weapon"],
+        "3": ["conjure-barrage", "lightning-arrow", "protection-from-energy"],
+        "4": ["freedom-of-movement", "guardian-of-nature", "stoneskin"],
+        "5": ["conjure-volley", "greater-restoration"]
+      }
+    },
+    "sorcerer": {
+      "cantrips": ["acid-splash", "fire-bolt", "ray-of-frost", "shocking-grasp"],
+      "levels": {
+        "1": ["burning-hands", "chromatic-orb", "magic-missile", "shield"],
+        "2": ["hold-person", "scorching-ray", "shatter"],
+        "3": ["fireball", "haste", "lightning-bolt"],
+        "4": ["blight", "fire-shield", "ice-storm"],
+        "5": ["cone-of-cold", "hold-monster", "synaptic-static"],
+        "6": ["chain-lightning", "disintegrate"],
+        "7": ["finger-of-death", "fire-storm"],
+        "8": ["sunburst"],
+        "9": ["meteor-swarm"]
+      }
+    },
+    "warlock": {
+      "cantrips": ["eldritch-blast", "mind-sliver", "poison-spray", "true-strike"],
+      "levels": {
+        "1": ["armor-of-agathys", "hellish-rebuke", "hex"],
+        "2": ["hold-person", "mind-spike", "mirror-image"],
+        "3": ["counterspell", "fear", "vampiric-touch"],
+        "4": ["banishment", "blight", "charm-monster"],
+        "5": ["hold-monster", "jallarzis-storm-of-radiance", "synaptic-static"],
+        "6": ["circle-of-death"],
+        "7": ["finger-of-death"],
+        "8": ["power-word-stun"],
+        "9": ["power-word-kill"]
+      }
+    },
+    "wizard": {
+      "cantrips": ["acid-splash", "fire-bolt", "ray-of-frost", "shocking-grasp"],
+      "levels": {
+        "1": ["burning-hands", "chromatic-orb", "magic-missile", "shield"],
+        "2": ["hold-person", "scorching-ray", "shatter"],
+        "3": ["counterspell", "fireball", "lightning-bolt"],
+        "4": ["blight", "fire-shield", "ice-storm"],
+        "5": ["cone-of-cold", "hold-monster", "synaptic-static"],
+        "6": ["chain-lightning", "disintegrate"],
+        "7": ["delayed-blast-fireball", "finger-of-death"],
+        "8": ["sunburst"],
+        "9": ["meteor-swarm"]
+      }
+    }
+  },
+  "defer_complex_examples": [
+    "animate-objects", "conjure-fey", "forcecage", "maze", "prismatic-wall",
+    "shapechange", "simulacrum", "summon-celestial", "summon-elemental",
+    "time-stop", "true-polymorph", "wish"
+  ]
+}

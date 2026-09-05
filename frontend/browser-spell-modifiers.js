@@ -22,6 +22,7 @@
       target_id: targetId,
       concentration_required: Boolean(spell.concentration),
       consume_on_attack_against: Boolean(effect.consumeOnAttackAgainst),
+      expires_at_end_of_target_turn: Boolean(effect.expiresAtEndOfTargetTurn),
       expires_source_turn_end_round: expiry,
     };
   }

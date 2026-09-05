@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Literal, TypedDict
 
 FigureForm = Literal[
-    "aquatic-mammal", "aquatic-reptile", "bat", "bear", "bird", "brute", "centipede", "crab", "frog",
+    "aquatic-fish", "aquatic-mammal", "aquatic-reptile", "bat", "bear", "bird", "brute", "centipede", "crab", "frog",
     "gargoyle", "hippogriff", "hoofed", "humanoid", "insect", "plant", "primate", "pterosaur", "quadruped",
     "reptile", "scorpion", "snake", "spider", "swarm", "theropod", "weapon", "winged-insect",
 ]
@@ -109,6 +109,7 @@ MONSTER_FIGURE_PROFILES: dict[str, FigureProfile] = {
     "Pteranodon": _p("pterosaur", "pteranodon"),
     "Rat": _p("quadruped", "rodent"),
     "Raven": _p("bird", "corvid"),
+    "Reef Shark": _p("aquatic-fish", "shark"),
     "Rhinoceros": _p("hoofed", "horn"),
     "Riding Horse": _p("hoofed", "equine"),
     "Saber-Toothed Tiger": _p("quadruped", "sabertooth"),

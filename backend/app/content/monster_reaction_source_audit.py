@@ -4,6 +4,7 @@ import logging
 import re
 from functools import lru_cache
 
+from app.content.monster_combat_scope import combat_math_relevant, feature_blocks
 from app.content.monster_catalog import load_monster_rows
 from app.domain.models import CombatantTemplate
 
@@ -51,6 +52,15 @@ def parse_reaction_names(source_reactions: object) -> list[str]:
     return names
 
 
+def arena_neutral_reaction_source(source_reactions: object) -> bool:
+    """True when every printed reaction is movement/sensory/presentation-only in Iron Pit."""
+    names = parse_reaction_names(source_reactions)
+    if not names:
+        return True
+    blocks = feature_blocks(source_reactions, names)
+    return all(not combat_math_relevant(blocks[name]) for name in names)
+
+
 def parse_parry_ac_bonus(source_reactions: object) -> int | None:
     match = _PARRY.search(str(source_reactions or ""))
     return int(match.group("bonus")) if match else None
@@ -74,7 +84,7 @@ def _redirect_matches(template: CombatantTemplate, source: object) -> bool:
 
 
 def reaction_issues(template: CombatantTemplate, row: dict[str, object]) -> list[str]:
-    """Certify reviewed reaction semantics; fail closed on every other printed reaction."""
+    """Certify outcome-changing reactions; ignore reaction text outside Iron Pit combat scope."""
     source = row.get("reactions", "")
     expected = parse_reaction_names(source)
     issues: list[str] = []
@@ -84,10 +94,15 @@ def reaction_issues(template: CombatantTemplate, row: dict[str, object]) -> list
         issues.append("unexpected-parry-reaction")
     if template.redirect_attack_reaction is not None and "Redirect Attack" not in expected:
         issues.append("unexpected-redirect-attack-reaction")
+    if not expected:
+        return issues
+    blocks = feature_blocks(source, expected)
     for name in expected:
         if name == "Parry" and _parry_matches(template, source):
             continue
         if name == "Redirect Attack" and _redirect_matches(template, source):
+            continue
+        if not combat_math_relevant(blocks[name]):
             continue
         if name == "Parry":
             issues.append("parry-source-mismatch")

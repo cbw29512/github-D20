@@ -31,3 +31,13 @@ def build_healing_word(spellcasting_modifier: int, extra_healing_bonus: int = 0)
         "healing-word", "Healing Word", "bonus_action", 60, 2, 4,
         spellcasting_modifier, extra_healing_bonus,
     )
+
+
+def build_heal() -> HealingAction:
+    """Printed-level 2024 Heal: 70 HP and Blinded/Deafened/Poisoned removal."""
+    return HealingAction(
+        id="heal", name="Heal", action_cost="action", range_ft=60,
+        target_mode="self_or_ally", healing_bonus=70,
+        removable_conditions=["blinded", "deafened", "poisoned"],
+        resource_id="spell-slot-6", resource_cost=1, animation="heal",
+    )

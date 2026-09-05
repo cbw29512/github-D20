@@ -17,7 +17,7 @@ from app.domain.models import BattleEvent, ConditionRemovalAction
 logger = logging.getLogger(__name__)
 
 
-def _remove_condition(target: EncounterCombatant, condition_id: str) -> None:
+def remove_condition(target: EncounterCombatant, condition_id: str) -> None:
     target.state.active_effect_ids = [item for item in target.state.active_effect_ids if item != condition_id]
     target.state.timed_effects = [item for item in target.state.timed_effects if item.effect_id != condition_id]
     if condition_id == "grappled":
@@ -33,7 +33,6 @@ def resolve_condition_removal(
     condition_ids: list[str],
     turn_key: str,
 ) -> BattleEvent:
-    """Spend printed economy/resources and end only conditions this action can remove."""
     try:
         if action.action_cost == "reaction":
             raise ValueError("Reaction condition removal requires a matching trigger, not an on-turn resolution.")
@@ -53,18 +52,13 @@ def resolve_condition_removal(
                 raise ValueError(f"Required resource {resource_id} is unavailable.")
             item.current_uses -= cost
         for condition_id in condition_ids:
-            _remove_condition(target, condition_id)
+            remove_condition(target, condition_id)
         names = ", ".join(condition_id.replace("_", " ").title() for condition_id in condition_ids)
         return BattleEvent(
-            sequence=sequence,
-            round_number=round_number,
-            event_type="feature",
-            actor_id=remover.combatant_id,
-            actor_name=remover.state.template.name,
-            target_id=target.combatant_id,
-            target_name=target.state.template.name,
-            removed_condition_ids=condition_ids,
-            feature_id=action.id,
+            sequence=sequence, round_number=round_number, event_type="feature",
+            actor_id=remover.combatant_id, actor_name=remover.state.template.name,
+            target_id=target.combatant_id, target_name=target.state.template.name,
+            removed_condition_ids=condition_ids, feature_id=action.id,
             animation=action.animation,
             description=f"{remover.state.template.name} uses {action.name} on {target.state.template.name}; {names} ends.",
         )
@@ -75,4 +69,4 @@ def resolve_condition_removal(
         raise RuntimeError("Condition removal could not be resolved.") from exc
 
 
-__all__ = ["choose_condition_removal_action", "resolve_condition_removal"]
+__all__ = ["choose_condition_removal_action", "remove_condition", "resolve_condition_removal"]

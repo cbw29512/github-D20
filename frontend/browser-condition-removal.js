@@ -120,5 +120,5 @@
     return null;
   }
 
-  window.IRON_PIT_BROWSER_CONDITION_REMOVAL = { chooseAction, chooseReaction, resolve };
+  window.IRON_PIT_BROWSER_CONDITION_REMOVAL = { chooseAction, chooseReaction, removeCondition, resolve };
 })();

@@ -10,10 +10,11 @@ from app.content.monster_defense_source_audit import defense_issues
 from app.content.monster_legendary_source_audit import legendary_action_issues
 from app.content.monster_limited_use_source_audit import limited_use_issues
 from app.content.monster_reaction_source_audit import reaction_issues
+from app.content.monster_save_math_source_audit import save_math_issues
 from app.content.monster_saving_throws import parse_saving_throw_bonuses
 from app.content.monster_spellcasting_source_audit import spellcasting_issues
+from app.content.monster_survival_source_audit import survival_action_issues
 from app.content.monster_trait_source_audit import trait_issues
-from app.content.movement_modes import movement_mode_issues, standard_arena_closing_speed
 from app.domain.models import CombatantTemplate
 
 logger = logging.getLogger(__name__)
@@ -21,10 +22,7 @@ _SIZE_NAMES = ("tiny", "small", "medium", "large", "huge", "gargantuan")
 _MELEE_ATTACK_ROLL = re.compile(r"\bMelee\s+Attack Roll:", re.IGNORECASE)
 _RANGED_ATTACK_ROLL = re.compile(r"\bRanged\s+Attack Roll:", re.IGNORECASE)
 _COMBINED_ATTACK_ROLL = re.compile(r"\bMelee\s+or\s+Ranged\s+Attack Roll:", re.IGNORECASE)
-_SAVING_THROW = re.compile(
-    r"\b(?:Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)\s+Saving Throw:",
-    re.IGNORECASE,
-)
+_SAVING_THROW = re.compile(r"\b(?:Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)\s+Saving Throw:", re.IGNORECASE)
 
 
 def _first_int(value: object) -> int:
@@ -54,31 +52,24 @@ def _size_matches(runtime_size: str, source_size: object) -> bool:
 
 
 def _source_attack_mode_count(actions: str) -> int:
-    """Count legal attack modes; one combined melee/ranged action exposes two runtime modes."""
     combined = len(_COMBINED_ATTACK_ROLL.findall(actions))
     standalone = _COMBINED_ATTACK_ROLL.sub("", actions)
-    return (
-        len(_MELEE_ATTACK_ROLL.findall(standalone))
-        + len(_RANGED_ATTACK_ROLL.findall(standalone))
-        + 2 * combined
-    )
+    return len(_MELEE_ATTACK_ROLL.findall(standalone)) + len(_RANGED_ATTACK_ROLL.findall(standalone)) + 2 * combined
 
 
 def audit_monster_source(template: CombatantTemplate, row: dict[str, object]) -> list[str]:
-    """Reconcile combat semantics against the vendored SRD 5.2.1 record before source metadata enrichment."""
+    """Reconcile Iron Pit combat math against the vendored SRD 5.2.1 record."""
     try:
         checks = (
             (template.name == str(row["name"]), "name-mismatch"),
             (_size_matches(template.size.value, row["size"]), "size-mismatch"),
             (template.armor_class == _first_int(row["armorClass"]), "armor-class-mismatch"),
             (template.max_hp == _first_int(row["hitPoints"]), "hit-points-mismatch"),
-            (template.speed_ft == standard_arena_closing_speed(row["speed"]), "arena-speed-mismatch"),
             (template.challenge_rating == _challenge(row), "challenge-rating-mismatch"),
             (template.initiative_bonus == _initiative(row), "initiative-mismatch"),
             (template.saving_throw_bonuses == parse_saving_throw_bonuses(row), "saving-throws-mismatch"),
         )
         issues = [label for passed, label in checks if not passed]
-        issues.extend(movement_mode_issues(template, row))
         issues.extend(defense_issues(template, row))
         issues.extend(trait_issues(template, row))
         issues.extend(reaction_issues(template, row))
@@ -86,6 +77,7 @@ def audit_monster_source(template: CombatantTemplate, row: dict[str, object]) ->
         issues.extend(limited_use_issues(template, row))
         issues.extend(legendary_action_issues(template, row))
         issues.extend(spellcasting_issues(template, row))
+        issues.extend(survival_action_issues(row.get("actions", "")))
         actions = normalized(row.get("actions", ""))
         runtime_attacks = [template.weapon_attack, *template.alternate_weapon_attacks]
         if _source_attack_mode_count(actions) != len(runtime_attacks):
@@ -97,6 +89,7 @@ def audit_monster_source(template: CombatantTemplate, row: dict[str, object]) ->
         issues.extend(charge_replacement_issues(template, actions))
         for action in template.saving_throw_actions:
             issues.extend(save_action_issues(action, actions))
+            issues.extend(save_math_issues(action, actions))
         if template.attack_action is not None and "multiattack" not in actions:
             issues.append("multiattack-source-missing")
         return issues

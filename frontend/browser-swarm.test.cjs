@@ -8,6 +8,7 @@ const vm = require("node:vm");
 global.window = globalThis;
 const load = (name) => vm.runInThisContext(fs.readFileSync(path.join(__dirname, name), "utf8"), { filename: name });
 load("browser-state.js");
+load("browser-zero-hp.js");
 load("browser-healing.js");
 load("browser-precombat-spells.js");
 

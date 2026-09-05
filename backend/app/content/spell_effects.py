@@ -36,9 +36,25 @@ SHIELD_OF_FAITH = DefensiveSpellAction(
     source="SRD 5.2.1 p.162",
 )
 
+AID = DefensiveSpellAction(
+    id="aid",
+    name="Aid",
+    level=2,
+    action_cost="action",
+    range_ft=30,
+    duration_minutes=480,
+    target_policy="friendly",
+    target_count=3,
+    max_hp_increase=5,
+    current_hp_increase=5,
+    priority=40,
+    animation="aid",
+    source="D&D Beyond Basic Rules 2024: Aid",
+)
+
 
 def defensive_spell_by_id(spell_id: str) -> DefensiveSpellAction:
-    spells = {spell.id: spell for spell in (BLESS, SHIELD_OF_FAITH)}
+    spells = {spell.id: spell for spell in (BLESS, SHIELD_OF_FAITH, AID)}
     try:
         return spells[spell_id]
     except KeyError as exc:

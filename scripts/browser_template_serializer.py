@@ -140,6 +140,9 @@ def _save(action: Any) -> dict[str, Any]:
         row["grappleEscapeDc"] = action.grapple_escape_dc
     if action.restrains_while_grappled:
         row["restrainsWhileGrappled"] = True
+    if action.resource_id:
+        row["resourceId"] = action.resource_id
+        row["resourceCost"] = action.resource_cost
     return row
 
 
@@ -240,6 +243,16 @@ def _progression_features(template: CombatantTemplate) -> dict[str, Any]:
     return row
 
 
+def _resource_recharges(template: CombatantTemplate) -> dict[str, dict[str, Any]]:
+    return {
+        item.id: {
+            "name": item.name, "minimum": item.recharge.minimum,
+            "maximum": item.recharge.maximum, "dieSize": item.recharge.die_size,
+        }
+        for item in template.resources if item.recharge is not None
+    }
+
+
 def template_row(template: CombatantTemplate) -> dict[str, Any]:
     try:
         traits = {item.value for item in template.combat_traits}
@@ -262,6 +275,9 @@ def template_row(template: CombatantTemplate) -> dict[str, Any]:
                        "off_hand": template.visual.off_hand, "body_style": template.visual.body_style},
             "source": template.source, **_progression_features(template),
         }
+        recharge = _resource_recharges(template)
+        if recharge:
+            row["resource_recharges"] = recharge
         if template.kind == "monster":
             row["source_trait_names"] = list(template.source_trait_names)
             row["source_reaction_names"] = list(template.source_reaction_names)

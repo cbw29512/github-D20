@@ -91,3 +91,5 @@ class WeaponAttack(BaseModel):
     knocks_prone_max_size: CreatureSize | None = None
     control_effect: HitControlEffect | None = None
     forbid_target_grappled_by_self: bool = False
+    resource_id: str | None = None
+    resource_cost: int = Field(default=1, ge=1, le=20)

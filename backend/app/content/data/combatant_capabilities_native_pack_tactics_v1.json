@@ -1,0 +1,92 @@
+[
+  {
+    "schema_version": 1,
+    "id": "srd-winter-wolf",
+    "name": "Winter Wolf",
+    "archetype": "source-certified pack hunter",
+    "challenge_rating": "3",
+    "kind": "monster",
+    "size": "large",
+    "armor_class": 13,
+    "max_hp": 75,
+    "speed_ft": 50,
+    "movement_modes": {"walk_ft": 50, "fly_ft": 0, "climb_ft": 0, "swim_ft": 0, "burrow_ft": 0, "hover": false},
+    "initiative_bonus": 1,
+    "attacks": [
+      {
+        "id": "srd-winter-wolf-bite",
+        "name": "Bite",
+        "weapon_id": "srd-winter-wolf-bite-weapon",
+        "attack_kind": "melee",
+        "attack_bonus": 6,
+        "damage": {"count": 2, "size": 6, "bonus": 4},
+        "damage_type": "piercing",
+        "animation": "bite",
+        "reach_ft": 5,
+        "effects": [{"kind": "prone", "max_target_size": "large"}]
+      }
+    ],
+    "primary_attack_id": "srd-winter-wolf-bite",
+    "save_actions": [
+      {
+        "id": "srd-winter-wolf-cold-breath",
+        "name": "Cold Breath",
+        "save_ability": "constitution",
+        "dc": 12,
+        "range_ft": 15,
+        "area": {"shape": "cone", "size_ft": 15},
+        "damage": {"count": 4, "size": 8, "bonus": 0},
+        "damage_type": "cold",
+        "success_damage": "half",
+        "resource_id": "srd-winter-wolf-cold-breath-recharge",
+        "resource_cost": 1,
+        "animation": "breath"
+      }
+    ],
+    "saving_throw_bonuses": {"strength": 4, "dexterity": 1, "constitution": 2, "intelligence": -2, "wisdom": 1, "charisma": -1},
+    "skill_bonuses": {"perception": 5, "stealth": 5},
+    "combat_traits": ["pack-tactics"],
+    "source_trait_names": ["Pack Tactics"],
+    "source_limited_use_names": ["actions:Cold Breath (Recharge 5-6)"],
+    "damage_immunities": ["cold"],
+    "resources": [
+      {"id": "srd-winter-wolf-cold-breath-recharge", "name": "Cold Breath", "max_uses": 1, "recharge": {"minimum": 5, "maximum": 6, "die_size": 6}}
+    ],
+    "visual": {"armor": "none", "main_hand": "Bite", "body_style": "beast"},
+    "source": "SRD 5.2.1 p. 342"
+  },
+  {
+    "schema_version": 1,
+    "id": "srd-reef-shark",
+    "name": "Reef Shark",
+    "archetype": "source-certified pack hunter",
+    "challenge_rating": "1/2",
+    "kind": "monster",
+    "size": "medium",
+    "armor_class": 12,
+    "max_hp": 22,
+    "speed_ft": 5,
+    "movement_modes": {"walk_ft": 5, "fly_ft": 0, "climb_ft": 0, "swim_ft": 30, "burrow_ft": 0, "hover": false},
+    "initiative_bonus": 2,
+    "attacks": [
+      {
+        "id": "srd-reef-shark-bite",
+        "name": "Bite",
+        "weapon_id": "srd-reef-shark-bite-weapon",
+        "attack_kind": "melee",
+        "attack_bonus": 4,
+        "damage": {"count": 2, "size": 4, "bonus": 2},
+        "damage_type": "piercing",
+        "animation": "bite",
+        "reach_ft": 5
+      }
+    ],
+    "primary_attack_id": "srd-reef-shark-bite",
+    "saving_throw_bonuses": {"strength": 2, "dexterity": 2, "constitution": 1, "intelligence": -5, "wisdom": 0, "charisma": -3},
+    "skill_bonuses": {"perception": 2},
+    "combat_traits": ["pack-tactics"],
+    "source_trait_names": ["Pack Tactics", "Water Breathing"],
+    "visual": {"armor": "none", "main_hand": "Bite", "body_style": "beast"},
+    "source": "SRD 5.2.1 p. 360"
+  }
+]

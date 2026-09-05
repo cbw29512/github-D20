@@ -2,16 +2,13 @@ from __future__ import annotations
 
 from app.combat.action_economy import is_available, spend
 from app.combat.condition_rules import is_incapacitated
+from app.combat.resource_pool import resource_uses, spend_resource
 from app.domain.models import BattleEvent, CombatantState, DamageType, WeaponAttack
 
 RAGE_EFFECT_ID = "rage"
 _RAGE_MAX_ROUNDS = 100
 _RAGE_RESISTANCES = (DamageType.BLUDGEONING, DamageType.PIERCING, DamageType.SLASHING)
 _MINDLESS_RAGE_IMMUNITIES = {"charmed", "frightened"}
-
-
-def _rage_resource(state: CombatantState):
-    return next((resource for resource in state.resources if resource.id == "rage"), None)
 
 
 def rage_active(state: CombatantState) -> bool:
@@ -37,10 +34,9 @@ def enter_rage(sequence: int, round_number: int, state: CombatantState, actor_id
     """Use a Bonus Action and one Rage use, then apply the 2024 Rage combat effects."""
     if state.template.wearing_heavy_armor or state.template.rage_damage_bonus <= 0 or rage_active(state):
         return None
-    resource = _rage_resource(state)
-    if resource is None or resource.current_uses <= 0 or not is_available(state, "bonus_action"):
+    if resource_uses(state, RAGE_EFFECT_ID) <= 0 or not is_available(state, "bonus_action"):
         return None
-    resource.current_uses -= 1
+    resource = spend_resource(state, RAGE_EFFECT_ID)
     spend(state, "bonus_action")
     state.active_effect_ids.append(RAGE_EFFECT_ID)
     removed = _end_mindless_rage_conditions(state)

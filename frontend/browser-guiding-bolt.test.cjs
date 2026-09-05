@@ -17,6 +17,7 @@ for (const file of [
 const S = window.IRON_PIT_BROWSER_STATE;
 const X = window.IRON_PIT_BROWSER_SPELL_ATTACK;
 const A = window.IRON_PIT_BROWSER_ATTACK;
+const M = window.IRON_PIT_BROWSER_MODIFIERS;
 const base = window.IRON_PIT_BROWSER_HEROES["karnok-stoneward-l1"];
 const guidingBolt = {
   id: "guiding-bolt", name: "Guiding Bolt", level: 1, actionCost: "action", range: 120,
@@ -25,6 +26,12 @@ const guidingBolt = {
     kind: "attacks-against-advantage", flatBonus: 0, diceCount: 0, diceSize: 0, damageType: null,
     consumeOnAttackAgainst: true, expiresAfterSourceTurns: 1,
   }], animation: "guiding-bolt",
+};
+const rayOfFrost = {
+  id: "ray-of-frost", name: "Ray of Frost", level: 0, actionCost: "action", range: 60,
+  attackBonus: 5, damageDiceCount: 1, damageDiceSize: 8, damageBonus: 0, damageType: "cold",
+  onHitModifierEffects: [{ kind: "speed", flatBonus: -10, expiresAtEndOfTargetTurn: true }],
+  animation: "ray-of-frost",
 };
 
 function dice(values) {
@@ -77,6 +84,19 @@ function setup(targetAc = 10) {
 }
 
 {
+  const { caster, target, arena } = setup();
+  dice([15, 6]);
+  const event = X.resolve(1, 1, caster, target, rayOfFrost, arena, "1:caster");
+  assert.equal(event.hit, true);
+  assert.equal(target.state.active_modifiers.length, 1);
+  assert.equal(target.state.active_modifiers[0].flat_bonus, -10);
+  assert.equal(target.state.active_modifiers[0].expires_at_end_of_target_turn, true);
+  assert.equal(M.effectiveSpeed(target.state), target.state.template.speed_ft - 10);
+  M.expireTargetTurn(target.state);
+  assert.equal(M.effectiveSpeed(target.state), target.state.template.speed_ft);
+}
+
+{
   const { caster, target, arena } = setup(30);
   dice([10]);
   const event = X.resolve(1, 1, caster, target, guidingBolt, arena, "1:caster");
@@ -104,5 +124,5 @@ function setup(targetAc = 10) {
   assert.equal(caster.state.action_available, true);
 }
 
-console.log("Browser Guiding Bolt spell-attack regressions passed.");
+console.log("Browser Guiding Bolt and Ray of Frost spell-attack regressions passed.");
 require("./browser-spell-attack-context.test.cjs");

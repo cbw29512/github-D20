@@ -7,6 +7,7 @@
   const F = () => window.IRON_PIT_BROWSER_FORMATION;
   const R = () => window.IRON_PIT_BROWSER_LIGHT_ATTACK;
   const V = () => window.IRON_PIT_BROWSER_SAVES;
+  const X = () => window.IRON_PIT_BROWSER_RESOURCES || { spend: () => {} };
   const WM = () => window.IRON_PIT_BROWSER_WEAPON_MASTERY || { resolveCleave: (sequence) => ({ events: [], sequence }) };
   const E = () => window.IRON_PIT_ACTION_ECONOMY || { available: (s) => s.action_available, spend: (s) => { s.action_available = false; } };
   const slotData = (slot) => Array.isArray(slot) ? { attackIds: slot, saveActionIds: [] }
@@ -17,7 +18,7 @@
     for (const target of F().targetOrder(member, setup)) {
       const action = (member.state.template.saving_throw_actions || []).find((item) => {
         const distance = F().saveDistance(member, target, item.range);
-        return allowed.has(item.id) && V().legalAction(item, target, distance);
+        return allowed.has(item.id) && V().resourceAvailable(member.state, item) && V().legalAction(item, target, distance);
       });
       if (action) return { target, save: action, distance: F().saveDistance(member, target, action.range) };
     }
@@ -60,6 +61,7 @@
       const splitThis = index > 0 && rangedSplit && !rangedSplitUsed && F().flexibleSlotHasBoth(member, data.attackIds);
       const choice = attackChoice(member, setup, data, splitThis);
       if (choice) {
+        if (choice.attack.resourceId) X().spend(member.state, choice.attack.resourceId, choice.attack.resourceCost || 1);
         if (splitThis && choice.attack.kind === "ranged") rangedSplitUsed = true;
         const pack = window.IRON_PIT_BROWSER_STATE.packTactics(member, setup);
         const featureId = openingFeature || (pack ? "pack-tactics" : definition.id);

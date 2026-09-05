@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 from app.domain.actions import AbilityName
+from app.domain.areas import AreaGeometry
 from app.domain.capability_effects import AttackEffectDefinition, DiceSpec, GrappleEffectDefinition
 from app.domain.size import CreatureSize
 from app.domain.weapons import DamageType, WeaponAttackKind
@@ -35,6 +36,8 @@ class AttackCapabilityDefinition(BaseModel):
     rage_eligible: bool = False
     effects: list[AttackEffectDefinition] = Field(default_factory=list)
     forbid_target_grappled_by_self: bool = False
+    resource_id: str | None = None
+    resource_cost: int | None = Field(default=None, ge=1, le=20)
 
     @model_validator(mode="after")
     def validate_attack_shape(self) -> "AttackCapabilityDefinition":
@@ -46,6 +49,10 @@ class AttackCapabilityDefinition(BaseModel):
             raise ValueError("Ranged attack requires normal and long range.")
         if self.attack_ability_modifier is not None and self.attack_ability is None:
             raise ValueError("Attack ability modifier requires an explicit attack ability.")
+        if self.resource_id is None and self.resource_cost is not None:
+            raise ValueError("Attack resource cost requires a resource id.")
+        if self.resource_id is not None and self.resource_cost is None:
+            raise ValueError("Resource-backed attack requires an explicit resource cost.")
         control_count = sum(effect.kind in {"grapple", "condition"} for effect in self.effects)
         if control_count > 1:
             raise ValueError("Current runtime supports one persistent control rider per attack.")
@@ -59,16 +66,21 @@ class SaveCapabilityDefinition(BaseModel):
     dc: int = Field(ge=1, le=40)
     range_ft: int = Field(ge=0)
     target_max_size: CreatureSize | None = None
+    area: AreaGeometry | None = None
     damage: DiceSpec | None = None
     damage_type: DamageType | None = None
     success_damage: Literal["none", "half"] = "none"
     grapple: GrappleEffectDefinition | None = None
+    resource_id: str | None = None
+    resource_cost: int | None = Field(default=None, ge=1, le=20)
     animation: str = "save-effect"
 
     @model_validator(mode="after")
     def validate_damage(self) -> "SaveCapabilityDefinition":
         if (self.damage is None) != (self.damage_type is None):
             raise ValueError("Save damage dice and damage type must be declared together.")
+        if self.resource_id is None and self.resource_cost is not None:
+            raise ValueError("Save resource cost requires a resource id.")
         if self.grapple and self.grapple.max_target_size and self.target_max_size:
             if self.grapple.max_target_size != self.target_max_size:
                 raise ValueError("Save target size and grapple target size cannot disagree.")

@@ -7,7 +7,7 @@ const vm = require("node:vm");
 
 global.window = globalThis;
 const load = (name) => vm.runInThisContext(fs.readFileSync(path.join(__dirname, name), "utf8"), { filename: name });
-for (const file of ["browser-heroes.js", "browser-condition-immunity.js", "browser-condition-rules.js", "browser-state.js", "browser-action-economy.js", "browser-healing.js"]) load(file);
+for (const file of ["browser-heroes.js", "browser-condition-immunity.js", "browser-condition-rules.js", "browser-state.js", "browser-action-economy.js", "browser-condition-removal.js", "browser-healing.js"]) load(file);
 
 const S = window.IRON_PIT_BROWSER_STATE;
 const E = window.IRON_PIT_ACTION_ECONOMY;
@@ -66,9 +66,23 @@ const setup = (healer, ally) => ({ heroes: [healer, ally], monsters: [] });
   assert.equal(H.chooseTarget(healer, fight, bonusHeal), null);
 }
 {
+  const healer = member("hero-1"), ally = member("hero-2");
+  ally.state.current_hp = ally.state.template.max_hp;
+  ally.state.active_effect_ids.push("poisoned", "frightened");
+  const heal = { id: "heal", name: "Heal", actionCost: "action", range: 60,
+    targetMode: "self_or_ally", diceCount: 0, diceSize: 6, healingBonus: 70,
+    removableConditions: ["blinded", "deafened", "poisoned"] };
+  assert.equal(H.chooseTarget(healer, setup(healer, ally), heal).combatant_id, ally.combatant_id);
+  window.IRON_PIT_DICE = { roll: () => { throw new Error("Heal rolls no dice"); } };
+  const event = H.resolve(1, 1, healer, ally, heal);
+  assert.deepEqual(event.removed_condition_ids, ["poisoned"]);
+  assert.equal(ally.state.active_effect_ids.includes("poisoned"), false);
+  assert.equal(ally.state.active_effect_ids.includes("frightened"), true);
+}
+{
   const healer = member("hero-1"), ally = member("hero-2"); ally.state.current_hp = 1;
   healer.state.template.healingActions = [{ id: "reaction-heal", name: "Reaction Heal", actionCost: "reaction", range: 60,
     targetMode: "ally", diceCount: 0, diceSize: 6, healingBonus: 5 }];
   assert.equal(H.chooseAction(healer, setup(healer, ally)), null);
 }
-console.log("Browser action economy and Bloodied healing policy regressions passed.");
+console.log("Browser action economy, Bloodied healing, and Heal cleansing regressions passed.");

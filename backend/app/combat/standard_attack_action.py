@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 
+from app.combat.attack_resources import spend_attack_resource
 from app.combat.cleave import resolve_cleave_extra_attack
 from app.combat.encounter_attacks import resolve_encounter_attack
 from app.combat.light_attack_resolution import resolve_light_extra_attack
@@ -26,8 +27,9 @@ def resolve_standard_attack_action(
     feature_id: str | None = None,
     allow_reckless: bool = True,
 ) -> tuple[list[BattleEvent], int]:
-    """Resolve one character Attack action plus its optional mastery/Light extra attack."""
+    """Resolve one Attack action plus optional mastery/Light follow-up."""
     try:
+        spend_attack_resource(attacker.state, attack)
         event = resolve_encounter_attack(
             sequence,
             round_number,

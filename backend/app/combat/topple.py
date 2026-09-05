@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 
 from app.combat.condition_immunity import condition_is_immune
+from app.combat.conditions import PRONE_EFFECT_ID, apply_condition
 from app.combat.dice import DiceProvider
 from app.combat.saving_throw_rolls import resolve_saving_throw
 from app.combat.weapon_mastery import weapon_mastery_active
@@ -11,7 +12,6 @@ from app.content.character_math import proficiency_bonus
 from app.domain.models import CombatantState, DiceRoll, WeaponAttack
 
 logger = logging.getLogger(__name__)
-PRONE_EFFECT_ID = "prone"
 
 
 @dataclass(frozen=True)
@@ -44,9 +44,8 @@ def resolve_topple_hit(
             raise ValueError(f"Topple attacker {attacker.template.id!r} requires a certified character level.")
         dc = 8 + modifier + proficiency_bonus(level)
         save_roll, succeeded = resolve_saving_throw(defender, "constitution", dc, dice)
-        if not succeeded:
-            defender.active_effect_ids.append(PRONE_EFFECT_ID)
-        return ToppleResolution(save_roll, dc, succeeded, not succeeded)
+        applied = False if succeeded else apply_condition(defender, PRONE_EFFECT_ID)
+        return ToppleResolution(save_roll, dc, succeeded, applied)
     except ValueError:
         raise
     except Exception as exc:

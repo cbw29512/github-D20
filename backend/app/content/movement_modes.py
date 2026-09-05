@@ -4,7 +4,6 @@ import logging
 import re
 from functools import lru_cache
 
-from app.content.monster_catalog import load_monster_rows
 from app.domain.models import CombatantTemplate
 from app.domain.movement import MovementModes
 
@@ -44,7 +43,7 @@ def parse_movement_modes(source_speed: object) -> dict[str, int]:
 
 
 def parse_movement_profile(source_speed: object) -> MovementModes:
-    """Convert printed SRD Speed text into the canonical six-part fingerprint."""
+    """Convert printed SRD Speed text into the canonical movement fingerprint."""
     modes = parse_movement_modes(source_speed)
     hover = bool(re.search(r"\bhover\b", str(source_speed), re.IGNORECASE))
     if hover and "fly" not in modes:
@@ -83,6 +82,10 @@ def movement_mode_issues(template: CombatantTemplate, row: dict[str, object]) ->
 
 @lru_cache(maxsize=1)
 def _rows_by_name() -> dict[str, dict[str, object]]:
+    # Local import keeps the low-level speed parser reusable by monster_catalog
+    # without creating a catalog -> arena -> movement -> catalog import cycle.
+    from app.content.monster_catalog import load_monster_rows
+
     return {str(row["name"]): row for row in load_monster_rows()}
 
 

@@ -6,14 +6,18 @@
   const M = () => window.IRON_PIT_BROWSER_MODIFIERS || { effectiveSpeed: (state) => state.template.speed_ft };
   const Q = () => window.IRON_PIT_BROWSER_CONDITION_RULES || { incapacitated: (state) => state.is_unconscious };
   const effectiveMaxHp = (state) => state.template.max_hp + (state.max_hp_bonus || 0);
+  const cloneTemplate = (template) => typeof structuredClone === "function"
+    ? structuredClone(template)
+    : JSON.parse(JSON.stringify(template));
 
   function buildState(template) {
+    const runtimeTemplate = cloneTemplate(template);
     return {
-      template, current_hp: template.max_hp, max_hp_bonus: 0, temporary_hp: 0, initiative_roll: null, initiative_total: null, is_alive: true,
+      template: runtimeTemplate, current_hp: runtimeTemplate.max_hp, max_hp_bonus: 0, temporary_hp: 0, initiative_roll: null, initiative_total: null, is_alive: true,
       is_unconscious: false, is_stable: false, is_dead: false,
       death_save_successes: 0, death_save_failures: 0,
       action_available: true, bonus_action_available: true, reaction_available: true,
-      movement_remaining_ft: 0, resources: { ...(template.resources || {}) }, heroic_inspiration: false,
+      movement_remaining_ft: 0, resources: { ...(runtimeTemplate.resources || {}) }, heroic_inspiration: false,
       active_effect_ids: [], active_buff_effect_ids: [], opening_buff_spell_id: null,
       grapple_sources: [], timed_effects: [], active_modifiers: [], concentration: null,
       feature_last_turn_keys: {}, spell_slot_expended_turn_key: null,

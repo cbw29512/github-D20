@@ -3,11 +3,17 @@
 
   const A = () => window.IRON_PIT_BROWSER_ATTACK;
   const L = () => window.IRON_PIT_BROWSER_LIGHT_ATTACK;
+  const X = () => window.IRON_PIT_BROWSER_RESOURCES || { spend: () => {} };
   const W = () => window.IRON_PIT_BROWSER_WEAPON_MASTERY || {
     resolveCleave: (sequence) => ({ events: [], sequence }),
   };
 
+  function spendAttackResource(member, attack) {
+    if (attack.resourceId) X().spend(member.state, attack.resourceId, attack.resourceCost || 1);
+  }
+
   function resolve(sequence, round, member, target, attack, distance, setup, turnKey, options = {}) {
+    spendAttackResource(member, attack);
     const event = A().resolveAttack(sequence++, round, member, target, attack, distance, {
       advantage: options.advantage || 0,
       featureId: options.featureId || null,

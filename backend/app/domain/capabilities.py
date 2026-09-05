@@ -91,12 +91,21 @@ class CombatantDefinition(BaseModel):
     def validate_references(self) -> "CombatantDefinition":
         attack_ids = {attack.id for attack in self.attacks}
         save_ids = {action.id for action in self.save_actions}
+        resource_ids = {resource.id for resource in self.resources}
         if self.kind == "character" and self.ability_scores is None:
             raise ValueError("Character combatant definitions require ability scores.")
         if len(attack_ids) != len(self.attacks) or len(save_ids) != len(self.save_actions):
             raise ValueError("Capability ids must be unique within their action family.")
+        if len(resource_ids) != len(self.resources):
+            raise ValueError("Resource ids must be unique.")
         if self.primary_attack_id not in attack_ids:
             raise ValueError("primary_attack_id must reference a declared attack.")
+        for attack in self.attacks:
+            if attack.resource_id is not None and attack.resource_id not in resource_ids:
+                raise ValueError(f"Attack {attack.id!r} references undeclared resource {attack.resource_id!r}.")
+        for action in self.save_actions:
+            if action.resource_id is not None and action.resource_id not in resource_ids:
+                raise ValueError(f"Save action {action.id!r} references undeclared resource {action.resource_id!r}.")
         if self.attack_action:
             for slot in self.attack_action.slots:
                 if not set(slot.attack_ids) <= attack_ids or not set(slot.save_action_ids) <= save_ids:

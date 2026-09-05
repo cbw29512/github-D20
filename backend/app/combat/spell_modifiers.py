@@ -37,6 +37,7 @@ def build_spell_modifier(
         target_id=target_id,
         concentration_required=concentration_required,
         consume_on_attack_against=effect.consume_on_attack_against,
+        expires_at_end_of_target_turn=effect.expires_at_end_of_target_turn,
         expires_source_turn_end_round=expiry,
     )
 

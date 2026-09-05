@@ -4,10 +4,12 @@ import logging
 
 from app.combat.action_economy import is_available, spend
 from app.combat.dice import DiceProvider
+from app.combat.resource_pool import resource_uses, spend_resource
 from app.combat.zero_hp import restore_hit_points
 from app.domain.models import BattleEvent, CombatantState, DiceRoll
 
 logger = logging.getLogger(__name__)
+SECOND_WIND = "second-wind"
 
 
 def use_second_wind(
@@ -19,8 +21,7 @@ def use_second_wind(
 ) -> BattleEvent:
     """Apply the SRD 5.2.1 Second Wind healing/resource rules to a Fighter state."""
     try:
-        resource = next((item for item in fighter.resources if item.id == "second-wind"), None)
-        if resource is None or resource.current_uses <= 0:
+        if resource_uses(fighter, SECOND_WIND) <= 0:
             raise ValueError("Second Wind has no remaining uses.")
         if not is_available(fighter, "bonus_action"):
             raise ValueError("Bonus Action is not available.")
@@ -37,7 +38,7 @@ def use_second_wind(
         hp_before = fighter.current_hp
         healed = restore_hit_points(fighter, healing_roll.total)
         spend(fighter, "bonus_action")
-        resource.current_uses -= 1
+        resource = spend_resource(fighter, SECOND_WIND)
         event_id = actor_event_id or fighter.template.id
 
         return BattleEvent(
@@ -51,9 +52,9 @@ def use_second_wind(
             healing_roll=healing_roll,
             hp_before=hp_before,
             hp_after=fighter.current_hp,
-            feature_id="second-wind",
+            feature_id=SECOND_WIND,
             resource_remaining=resource.current_uses,
-            animation="second-wind",
+            animation=SECOND_WIND,
             description=f"{fighter.template.name} uses Second Wind and regains {healed} HP.",
         )
     except Exception as exc:

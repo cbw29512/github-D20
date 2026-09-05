@@ -103,4 +103,6 @@ def compile_attack(definition: AttackCapabilityDefinition) -> WeaponAttack:
         knocks_prone_max_size=prone_size,
         control_effect=control,
         forbid_target_grappled_by_self=definition.forbid_target_grappled_by_self,
+        resource_id=definition.resource_id,
+        resource_cost=definition.resource_cost or 1,
     )

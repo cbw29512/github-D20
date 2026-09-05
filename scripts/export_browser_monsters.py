@@ -27,11 +27,38 @@ def _certified_monsters():
     return monsters
 
 
+def _add_save_area_metadata(row, template) -> None:
+    serialized = row.get("saving_throw_actions", [])
+    if len(serialized) != len(template.saving_throw_actions):
+        raise RuntimeError(f"Saving-throw serialization count drift for {template.id}.")
+    for item, action in zip(serialized, template.saving_throw_actions, strict=True):
+        if action.area is None:
+            continue
+        area = {"shape": action.area.shape, "sizeFt": action.area.size_ft}
+        if action.area.width_ft is not None:
+            area["widthFt"] = action.area.width_ft
+        item["area"] = area
+
+
+def _add_attack_resource_metadata(row, template) -> None:
+    attacks = [template.weapon_attack, *template.alternate_weapon_attacks]
+    serialized = row.get("attacks", [])
+    if len(serialized) != len(attacks):
+        raise RuntimeError(f"Attack serialization count drift for {template.id}.")
+    for item, attack in zip(serialized, attacks, strict=True):
+        if attack.resource_id is None:
+            continue
+        item["resourceId"] = attack.resource_id
+        item["resourceCost"] = attack.resource_cost
+
+
 def render() -> str:
     try:
         rows = []
         for template in _certified_monsters():
             row = template_row(template)
+            _add_save_area_metadata(row, template)
+            _add_attack_resource_metadata(row, template)
             row["creature_type"] = template.creature_type
             rows.append(row)
         ids = {row["id"] for row in rows}

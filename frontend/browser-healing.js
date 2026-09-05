@@ -3,11 +3,13 @@
 
   const E = () => window.IRON_PIT_ACTION_ECONOMY;
   const C = () => window.IRON_PIT_BROWSER_SPELLCASTING;
+  const R = () => window.IRON_PIT_BROWSER_CONDITION_REMOVAL;
   const S = () => window.IRON_PIT_BROWSER_STATE;
   const bloodied = (state) => state.current_hp * 2 <= S().effectiveMaxHp(state);
   const distance = (a, b) => Math.abs(a.position_ft - b.position_ft);
   const swarm = (state) => state.template.traits?.includes("swarm");
   const slotHeal = (action) => Boolean(action.resourceId?.startsWith("spell-slot-"));
+  const removable = (target, action) => target.state.active_effect_ids.filter((id) => (action.removableConditions || []).includes(id));
 
   function resourceAvailable(member, action, turnKey = null) {
     if (!action.resourceId) return true;
@@ -16,8 +18,9 @@
   }
 
   function targetAllowed(healer, target, action) {
-    if (target.state.is_dead || !target.state.is_alive || target.state.current_hp >= S().effectiveMaxHp(target.state) || swarm(target.state)) return false;
+    if (target.state.is_dead || !target.state.is_alive || swarm(target.state)) return false;
     if (distance(healer, target) > (action.range || 5)) return false;
+    if (target.state.current_hp >= S().effectiveMaxHp(target.state) && !removable(target, action).length) return false;
     if (action.targetMode === "self") return target.combatant_id === healer.combatant_id;
     if (action.targetMode === "ally") return target.combatant_id !== healer.combatant_id && target.side === healer.side;
     if (action.targetMode === "other") return target.combatant_id !== healer.combatant_id;
@@ -25,7 +28,7 @@
   }
 
   function selfWorthwhile(member, action) {
-    return bloodied(member.state) && ["action", "bonus_action"].includes(action.actionCost);
+    return removable(member, action).length > 0 || (bloodied(member.state) && ["action", "bonus_action"].includes(action.actionCost));
   }
 
   function chooseTarget(healer, setup, action, turnKey = null) {
@@ -38,6 +41,8 @@
     if (downed.length) return downed.reduce((best, item) => item.state.death_save_failures > best.state.death_save_failures ? item : best);
     const hurt = others.filter((target) => bloodied(target.state));
     if (hurt.length) return hurt.reduce((best, item) => item.state.current_hp / S().effectiveMaxHp(item.state) < best.state.current_hp / S().effectiveMaxHp(best.state) ? item : best);
+    const cleansable = others.filter((target) => removable(target, action).length);
+    if (cleansable.length) return cleansable[0];
     const self = legal.find((target) => target.combatant_id === healer.combatant_id);
     return self && selfWorthwhile(healer, action) ? self : null;
   }
@@ -80,19 +85,23 @@
     const rolls = Array.from({ length: action.diceCount || 0 }, () => window.IRON_PIT_DICE.roll(action.diceSize || 6));
     const total = rolls.reduce((sum, roll) => sum + roll, 0) + (action.healingBonus || 0);
     const hpBefore = target.state.current_hp, healed = restore(target.state, total);
+    const removed = removable(target, action);
+    removed.forEach((id) => R().removeCondition(target, id));
     let remaining = null;
     if (action.resourceId) {
       healer.state.resources[action.resourceId] -= action.resourceCost || 1;
       remaining = healer.state.resources[action.resourceId];
     }
+    let description = `${healer.state.template.name} uses ${action.name} on ${target.state.template.name} and restores ${healed} HP.`;
+    if (removed.length) description += ` Ends: ${removed.map((id) => id.replaceAll("_", " ").toUpperCase()).join(", ")}.`;
     return {
       sequence, round_number: round, event_type: "healing", actor_id: healer.combatant_id, actor_name: healer.state.template.name,
       target_id: target.combatant_id, target_name: target.state.template.name,
       healing_roll: { notation: rolls.length ? `${rolls.length}d${action.diceSize || 6}+${action.healingBonus || 0}` : String(action.healingBonus || 0), rolls, modifier: action.healingBonus || 0, total },
       hp_before: hpBefore, hp_after: target.state.current_hp, death_save_successes: target.state.death_save_successes,
       death_save_failures: target.state.death_save_failures, is_stable: target.state.is_stable, is_dead: target.state.is_dead,
-      feature_id: action.id, resource_remaining: remaining, animation: action.animation || "healing",
-      description: `${healer.state.template.name} uses ${action.name} on ${target.state.template.name} and restores ${healed} HP.`,
+      removed_condition_ids: removed, feature_id: action.id, resource_remaining: remaining, animation: action.animation || "healing",
+      description,
     };
   }
 

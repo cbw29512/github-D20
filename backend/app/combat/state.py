@@ -13,14 +13,16 @@ logger = logging.getLogger(__name__)
 
 
 def build_combatant_state(template: CombatantTemplate) -> CombatantState:
+    """Create disposable fight state without exposing the source card to mutation."""
     try:
+        runtime_template = template.model_copy(deep=True)
         return CombatantState(
-            template=template,
-            current_hp=template.max_hp,
+            template=runtime_template,
+            current_hp=runtime_template.max_hp,
             movement_remaining_ft=0,
             resources=[
                 ResourceState(id=r.id, name=r.name, current_uses=r.max_uses, max_uses=r.max_uses)
-                for r in template.resources
+                for r in runtime_template.resources
             ],
         )
     except Exception as exc:

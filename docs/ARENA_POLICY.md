@@ -1,48 +1,97 @@
 # Iron Pit Arena Policy
 
-Iron Pit is a rules-first card-vs-card deathmatch. It intentionally simplifies battlefield geometry while preserving the D&D 2024 / SRD 5.2.1 combat rules that decide the fight.
+`docs/IRON_PIT_UNIVERSAL_COMBAT_DOCTRINE.md` is authoritative. This file specializes that doctrine for battlefield geometry and autonomous pawn behavior.
 
-## Locked standard arena assumptions
+Iron Pit is a deterministic card-vs-card D&D combat-math simulator. It is not a complete tactical virtual tabletop.
 
-- Every fight continues until one side is dead. There is no morale, surrender, voluntary fleeing, retreat, or kiting AI.
-- The standard arena is flat and unobstructed. Terrain-only movement modes do not matter unless a future arena explicitly enables that terrain.
-- The standard arena has sufficient diffuse or artificial illumination but is not in direct sunlight. Features that specifically require sunlight are inactive unless a future arena explicitly enables sunlight.
-- The standard formation uses a compact logical footprint 15 feet wide by 20 feet deep: three 5-foot lanes across and four 5-foot ranks deep. The two middle ranks are the opposing frontlines and the two outer ranks are the backlines. This is an arena abstraction for deterministic targeting, not a promise that every card occupies a unique literal 5-foot square.
-- There is no user-selected starting distance. Dedicated melee/frontline combatants begin already engaged with the opposing frontline at 5 feet. Dedicated ranged combatants and supported casters begin one 5-foot rank behind their own frontline. Encounter input rejects legacy starting-distance fields instead of silently accepting them.
-- While an active frontline remains, backline combatants use their legal ranged, thrown, spell, or support options from the back rank and deterministic nearest-target policy keeps the opposing active frontline between them. When that frontline is defeated or otherwise stops being an active threat, the exposed backline becomes the next target and normal RAW movement/range rules govern closing and attacks.
-- Fixed formation is an Iron Pit tactical policy only. It does not change a weapon's printed reach or range, movement speed, difficult movement, forced movement, Opportunity Attack triggers, ranged attacks in close combat, conditions, reactions, or any other RAW combat rule.
-- Frightened by itself remains the printed condition: it imposes its normal attack/ability-check Disadvantage while the fear source is in line of sight and prevents willingly approaching that source. Frightened alone does not make a card lose its turn.
-- When a specific effect explicitly requires a creature to flee, retreat, or move away from a source, Iron Pit does not track that retreat on the compact card formation. Instead, for each turn on which that forced-retreat instruction applies, the card remains in its formation slot and takes no voluntary attacks, spells, support actions, or closing movement; the fiction is that the creature spent that turn running. The underlying condition/effect still lasts and ends according to its save, duration, damage-break, source-incapacitation, death, or other termination rules.
-- When a forced-fear or similar effect says a creature drops a held weapon or item as part of the retreat, Iron Pit does not create or track a dropped-item position. The item remains associated with that card and is assumed to be immediately recovered when the creature is next allowed to act normally. The card does not switch to an improvised/unarmed routine solely because the physical pickup location is abstracted away.
-- **Iron Pit ongoing-spell save rule:** when a spell causes a continuing harmful condition or control effect after a failed saving throw, the affected creature repeats the same saving throw against the same DC at the end of each of its turns. A success ends that spell's continuing effect on that creature. This is an explicit Iron Pit house rule used to keep one failed save from removing a card from meaningful play for many rounds. Instantaneous save-for-damage spells are unaffected. If a spell already grants a repeat save every round, its printed save ability and DC remain authoritative; the Pit standardizes the repeat timing to the end of the affected creature's turn unless an earlier timing is mechanically required to avoid granting an extra turn of control.
-- A continuing control spell may therefore remove a creature from useful action for its full duration only if that creature actually keeps failing the repeat saves. Iron Pit never extends a control effect merely because abstracted movement, line-of-sight, dropped-item position, cover, or another untracked battlefield detail would make the printed escape condition awkward to represent.
-- **Spell complexity gate:** non-damaging and mixed damage/control spells are certified only when their outcome-changing effects can be represented with the compact arena state without inventing exploitable positioning rules. If a pregen spell is too geometry-dependent, object-dependent, terrain-dependent, illusion-dependent, or otherwise too complex to model faithfully, it is not selected for that canonical pregen package; another legal spell is chosen instead. A monster's printed spell or feature is never silently replaced: if an outcome-changing printed option is too complex and cannot be safely ignored under arena assumptions, that monster remains blocked until the mechanic is supported.
-- Friendly multi-target buffs prioritize legal melee/frontline allies first. If target capacity remains, the caster is the first backline recipient, followed by other legal backline allies. Ties remain deterministic.
-- Point-targeted area spells use the best legal point of origin within their printed range and line-of-sight rules. The point may be beyond the enemy formation when RAW permits it, allowing the edge of a sphere or similar area to catch enemies while sparing allies. The AI maximizes enemies without exposing an unprotected ally. If no legal ally-safe placement exists, it falls through to a safer spell instead of deliberately friendly-firing.
-- A caster-origin area, cone, line, emanation, or other spell whose point of origin is fixed by its own rules does not receive the point-targeted edge-placement privilege. Its printed origin/shape remains authoritative.
-- Overlapping areas do not create extra hits when the spell says a creature is affected only once. For example, a future certified Meteor Swarm may place its four legal points to cover the enemy formation safely when possible, but overlapping fiery spheres never multiply damage to the same creature.
-- Spell progression remains complete by class and character level: a level-20 caster receives the full certified spell package and slot allotment appropriate to that level, just as a level-1 caster receives the complete level-1 package. Spell upcasting is intentionally deferred. For now, a leveled spell consumes a slot of its own printed level and resolves at its printed/base-level effect. Higher-level slots are not spent on lower-level spells. Cantrip scaling by character level remains a separate RAW mechanic and is not treated as upcasting.
-- Because the standard arena is unobstructed and combatants never retreat, Hide is not a legal tactical option and voluntary Disengage-to-retreat behavior is not selected. A printed option such as Nimble Escape remains part of the source audit but does not change a standard Pit outcome.
-- Combatants always close toward the enemy when closing is required. Movement away from the enemy is not part of the standard arena policy except when a printed effect forces retreat; forced retreat uses the no-position-change abstraction above.
-- Ranged and thrown attacks may be used whenever legal. They are a backline/approach option, not a reason to kite or retreat.
-- Once a combatant reaches melee range, it stays in the brawl. If it has a legal melee attack, that attack is preferred. A truly ranged-only combatant may keep making its ranged attack in melee and takes the normal Disadvantage where the rules require it.
-- Melee-only combatants that cannot attack yet may Dodge while using their movement to close. Dodge benefits end if the creature becomes Incapacitated or its Speed is 0, as required by SRD 5.2.1.
-- Run-up, charge, leap, pounce, or similar opening-burst tactics are selected only in round 1 when that combatant's initiative total is strictly greater than every enemy's initiative total. A tied total does not qualify even if the arena tie-break puts that combatant first. When the opener qualifies, the Pit assumes any required pre-contact run-up happened immediately before the cards reached their starting slots, so starting adjacent does not erase the opener. Any remaining movement needed to reach the target still has to be legal. Printed target-size, attack, damage, save, and condition effects still resolve normally; the policy never invents an extra attack or extra damage. If the opener is unavailable, the combatant uses normal melee/ranged behavior from its board slot.
-- A creature can use a printed Fly speed as horizontal closing movement in the open Pit, but it does not voluntarily gain altitude, leave melee, or kite. Consequently, Flyby does not alter standard-Pit tactics unless a future arena allows voluntary disengagement movement.
-- Pushback or other forced movement may create distance, but on its next turn a combatant closes again rather than exploiting that distance to kite.
-- If a side has at least two active combatants, ally-within-5-feet requirements are treated as satisfied under the flat-pit abstraction. Downed, unconscious, or dead allies do not count.
-- Standing enemies are targeted before downed enemies. If no standing enemy remains, living unconscious or stable player characters remain valid targets so the deathmatch can reach a rules-resolved death rather than ending merely at 0 HP.
-- Standard monsters die at 0 HP. Player characters use the supported zero-HP, Unconscious, Death Saving Throw, massive-damage, and damage-while-at-0 rules until they die or regain HP.
-- Unconscious player characters are also Incapacitated and Prone. Attack rolls against them have Advantage; hits from attackers within 5 feet are Critical Hits; and when Unconscious ends they remain Prone until they stand normally.
-- Iron Pit has no Short Rest or Long Rest during a fight. Each limited-use combat resource begins with the exact uses granted by that combatant's class, species, level, or printed stat block. Once spent, a use remains spent for the rest of the fight. Ending an effect, dropping to 0 HP, stabilizing, or regaining HP never refunds or refreshes that resource.
-- Effects end only when their own rules say they end, except for the explicit ongoing-spell repeat-save house rule above. Becoming Incapacitated can end effects such as Rage or Dodge when their printed rules require it, but it does not erase unrelated conditions or restore spent resources. Healing above 0 HP does not reactivate an effect that ended.
-- Multiple sources of Advantage never become more than Advantage. Multiple sources of Disadvantage never become worse than Disadvantage. If any Advantage and any Disadvantage both apply, the d20 roll is normal regardless of how many sources exist on either side.
-- The same named condition is not multiplied into stronger copies merely because multiple sources apply it. Each source still matters for its own duration and removal rules where RAW requires that distinction.
+## Universal combatant rule
+
+Heroes, monsters, and future homebrew use one combat engine. Strength, Armor Class, Initiative, attack rolls, saving throws, Advantage/Disadvantage, damage, healing, defenses, resources, action economy, and every other supported mathematical primitive mean the same thing regardless of card type.
+
+Source cards/templates are immutable. Starting a fight creates disposable runtime state. Current HP, Temporary HP, buffs, debuffs, conditions, resources, recharge state, Concentration, and temporary modifiers may change during combat but must never permanently rewrite the source card.
+
+## Standard board geometry
+
+The standard Iron Pit is fixed at **3 columns x 4 rows = 12 combat slots**.
+
+- One half belongs to monsters: **6 slots**.
+- One half belongs to pregens/heroes: **6 slots**.
+- Existing D&D five-foot-square distance conventions remain the working distance convention unless later explicitly changed.
+- The board exists to make engagement, range, reach, adjacency, target legality, area targeting, and simple closing deterministic.
+- Creature size may still matter when a rule explicitly checks size, but the current Pit is not a free-form tactical packing/pathfinding simulator.
+
+## Slug-fest behavior
+
+Combatants are autonomous pawns compelled to fight until one side is dead.
+
+There is no morale, surrender, voluntary retreat, fleeing, kiting, or keep-away AI.
+
+When comparing legal offensive options, a pawn chooses the option with the highest expected damage after relevant known combat math such as:
+
+- hit probability;
+- saving-throw probability;
+- Advantage/Disadvantage;
+- target count;
+- known resistance, immunity, vulnerability, and damage reduction;
+- legal resource/recharge availability.
+
+Do not choose based only on the largest possible die result. Limited-use and recharge offense is available for the current fight and is not hoarded for a future encounter.
+
+If a damaging option is unavailable only because engagement has not occurred, the pawn closes or Dashes toward the fight. Once engaged, it does not voluntarily retreat to manufacture ranged distance.
+
+Non-offensive healing/support/control choices are governed only by shared universal policies. Never create a monster-name-specific tactical planner.
+
+## Movement boundary
+
+Iron Pit keeps only the movement facts required for simple engagement and action legality.
+
+- Base position, range, reach, adjacency, and closing distance remain relevant.
+- Movement-only Speed changes, forced movement, dragging, pushing, pulling, climbing, swimming, flying, burrowing, repositioning, standing-cost, and similar movement consequences do not block certification by themselves.
+- If an ability combines movement with a supported combat-math consequence, ignore only the movement component and model the supported consequence.
+- Example: an effect that knocks a target Prone and reduces Speed keeps Prone's attack-math consequences but ignores the Speed consequence.
+- There is no tactical pathfinding/spacing optimizer at this stage.
+
+This is a deliberate product simplification, not a claim about full tabletop D&D tactics.
+
+## Range, reach, and adjacency are not movement-only effects
+
+Weapon/spell range, melee reach, adjacency, and target legality remain in scope because they determine whether a chosen combat action can legally resolve on the fixed Pit board.
+
+A movement modifier is not allowed to become a hidden certification blocker merely because a full tactical simulator could turn that Speed change into a different future position. The current Pit deliberately abstracts that indirect tactical layer.
+
+## Conditions use universal math
+
+Conditions are source states that contribute reusable universal effects.
+
+Example: Prone contributes:
+
+- Disadvantage on the Prone creature's attack rolls;
+- Advantage on attacks against it from within 5 feet;
+- Disadvantage on attacks against it from farther than 5 feet;
+- movement/standing-cost consequences ignored by the current movement abstraction.
+
+Those roll effects use the same Advantage/Disadvantage engine as every spell, trait, class feature, monster ability, and homebrew source. The combat log retains `Prone` as the source name.
+
+## Advantage / Disadvantage
+
+Multiple sources never create custom variants:
+
+- any number of Advantage sources -> Advantage;
+- any number of Disadvantage sources -> Disadvantage;
+- at least one of each -> normal roll.
+
+Runtime/audit data should preserve contributing source names even though the mathematical resolver is shared.
+
+## Aquatic-only creatures
+
+Aquatic-only creatures that cannot meaningfully participate in the standard land Pit are **deferred environment content**, not unresolved universal engine work.
+
+Use an explicit environment deferral such as `deferred-environment:aquatic-only`. Do not spend current implementation time creating aquatic tactical behavior. A future aquatic arena can reuse the same universal combat engine.
 
 ## Readiness rule
 
-A stat-block feature does not block standard-arena readiness when these arena assumptions make that feature unable to affect the fight. A missing attack, damage rider, defense, saving throw, condition, resource, reaction, spell, recharge feature, or other mechanic that can change the combat outcome still blocks readiness.
+A card is blocked only by an unsupported consequence that changes actual Iron Pit combat math under this policy.
 
-Every runnable pregen must independently reconcile its combat-relevant class, species, feat, equipment, resource, and level-scaling rules. Every runnable monster must reconcile every combat-relevant printed stat-block mechanic. If a scaling rule or outcome-changing mechanic has not been independently certified, the card remains blocked.
+Movement-only riders, aquatic-only environment requirements, exploration/social/narrative effects, and other deliberately out-of-scope consequences do not block certification.
 
-These are explicit Iron Pit arena assumptions, not changes to a creature's printed statistics. Unsupported outcome-changing mechanics fail closed instead of being approximated.
+Unsupported in-scope combat math fails closed. Out-of-scope effects are intentionally ignored rather than approximated.

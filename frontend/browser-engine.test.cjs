@@ -11,7 +11,7 @@ const load = (name) => vm.runInThisContext(fs.readFileSync(path.join(__dirname, 
 for (const file of [
   "browser-heroes.js", "browser-monsters.js", "browser-monsters-fixed.js",
   "browser-condition-immunity.js", "browser-condition-rules.js", "browser-action-economy.js",
-  "browser-grapple.js", "browser-timed-conditions.js", "browser-state.js", "browser-rage.js", "browser-rolls.js",
+  "browser-grapple.js", "browser-timed-conditions.js", "browser-state.js", "browser-resources.js", "browser-recharge.js", "browser-rage.js", "browser-rolls.js",
   "browser-zero-hp.js", "browser-weapon-mastery.js", "browser-graze.js", "browser-vex.js", "browser-attack.js",
   "browser-reactions.js", "browser-reaction-movement.js", "browser-saves.js", "browser-condition-lifecycle.js",
   "browser-charge.js", "browser-light-weapons.js", "browser-light-attack.js", "browser-standard-attack-action.js",
@@ -50,6 +50,22 @@ function fight(heroIds, monsterIds, dice = deterministicDice()) {
   assert.equal(battle.setup.monsters[0].position_ft, 10);
   assert.equal(Object.hasOwn(battle.setup, "starting_distance_ft"), false, "formation setup must not expose a user-configurable starting distance");
   assert.equal(Math.abs(battle.setup.heroes[0].position_ft - battle.setup.monsters[0].position_ft), 5, "front-line melee must begin engaged");
+}
+
+{
+  const source = window.IRON_PIT_BROWSER_HEROES["karnok-stoneward-l1"];
+  const originalAc = source.armor_class;
+  const originalAttackName = source.attacks[0].name;
+  const first = window.IRON_PIT_BROWSER_STATE.buildState(source);
+  first.current_hp = 1;
+  first.template.armor_class += 10;
+  first.template.attacks[0].name = "runtime-only";
+  const second = window.IRON_PIT_BROWSER_STATE.buildState(source);
+  assert.notEqual(first.template, source, "fight state must not retain the source card object");
+  assert.equal(source.armor_class, originalAc, "runtime AC changes must not mutate the source card");
+  assert.equal(source.attacks[0].name, originalAttackName, "nested runtime changes must not mutate the source card");
+  assert.equal(second.current_hp, source.max_hp, "a new fight must start from source HP");
+  assert.equal(second.template.armor_class, originalAc, "a new fight must not inherit prior runtime modifiers");
 }
 
 {
@@ -160,6 +176,42 @@ function fight(heroIds, monsterIds, dice = deterministicDice()) {
   assert.ok(rage, "audited Barbarian should Rage in combat");
   assert.equal(attack?.weapon_id, "rokhan-greataxe");
   assert.equal(attack?.damage_roll?.modifier, 5, "Rokhan should add +3 Strength and +2 Rage damage");
+}
+
+{
+  const state = {
+    template: { resources: { breath: 1 } }, resources: { breath: 1 }, action_available: true,
+    is_dead: false, is_unconscious: false, active_effect_ids: [],
+  };
+  const target = {
+    combatant_id: "hero-1:target", state: {
+      template: { name: "Target", saving_throw_bonuses: { dexterity: 0 } }, active_effect_ids: [],
+      current_hp: 20, temporary_hp: 0, death_save_successes: 0, death_save_failures: 0,
+      is_alive: true, is_dead: false, is_unconscious: false, concentration: null,
+    },
+  };
+  const actor = { combatant_id: "monster-1:dragon", state: { ...state, template: { ...state.template, name: "Test Dragon" } } };
+  const action = { id: "breath", name: "Test Breath", saveAbility: "dexterity", dc: 12, range: 15,
+    damageDiceCount: 0, damageDiceSize: 6, damageBonus: 0, successDamage: "none", resourceId: "breath", resourceCost: 1 };
+  window.IRON_PIT_DICE = queuedDice([10]);
+  const event = window.IRON_PIT_BROWSER_SAVES.resolveAction(1, 1, actor, target, action, 5);
+  assert.equal(event.resource_remaining, 0, "save action spends its shared resource exactly once");
+  assert.equal(window.IRON_PIT_BROWSER_SAVES.resourceAvailable(actor.state, action), false);
+  assert.throws(() => window.IRON_PIT_BROWSER_SAVES.resolveAction(2, 2, actor, target, action, 5, { spendAction: false }), /resource is unavailable/);
+}
+
+{
+  const member = { combatant_id: "monster-1:dragon", state: {
+    template: { name: "Test Dragon", resources: { breath: 1 }, resource_recharges: {
+      breath: { name: "Test Breath", minimum: 5, maximum: 6, dieSize: 6 },
+    } }, resources: { breath: 0 },
+  } };
+  window.IRON_PIT_DICE = queuedDice([5]);
+  const recharge = window.IRON_PIT_BROWSER_RECHARGE.resolve(7, 2, member);
+  assert.equal(recharge.sequence, 8);
+  assert.equal(member.state.resources.breath, 1);
+  assert.equal(recharge.events[0].resource_remaining, 1);
+  assert.match(recharge.events[0].description, /Test Breath/);
 }
 
 {

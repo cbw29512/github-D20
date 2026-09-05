@@ -23,6 +23,7 @@ class SpellModifierEffect(BaseModel):
     dice_size: int = Field(default=0, ge=0, le=100)
     damage_type: DamageTypeName | None = None
     consume_on_attack_against: bool = False
+    expires_at_end_of_target_turn: bool = False
     expires_after_source_turns: int | None = Field(default=None, ge=1, le=20)
 
     @model_validator(mode="after")
@@ -40,6 +41,8 @@ class SpellModifierEffect(BaseModel):
             raise ValueError("Attack-advantage modifiers do not accept a flat bonus.")
         if self.consume_on_attack_against and self.kind != "attacks-against-advantage":
             raise ValueError("Only attack-advantage spell modifiers can be consumed by the next attack.")
+        if self.expires_at_end_of_target_turn and self.expires_after_source_turns is not None:
+            raise ValueError("Spell modifier expiry must be target-relative or source-relative, not both.")
         return self
 
 

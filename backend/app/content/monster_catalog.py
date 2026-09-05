@@ -10,6 +10,7 @@ from app.content.arena_eligibility import deferred_environment_reason
 from app.content.monster_neighbor_bleed_corrections import apply_neighbor_bleed_corrections
 from app.content.monster_neighbor_bleed_normalizer import normalize_neighbor_name_bleed
 from app.content.monster_section_heading_corrections import apply_section_heading_corrections
+from app.content.native_monster_candidates import candidate_id
 from app.domain.catalog import CoverageStatus, MonsterCatalogCard
 from app.domain.models import CombatantTemplate
 
@@ -18,8 +19,6 @@ _DATA_DIR = Path(__file__).with_name("data")
 _DATA_PATH = _DATA_DIR / "srd_5_2_1_monsters.json"
 _CORRECTIONS_PATH = _DATA_DIR / "srd_5_2_1_monster_corrections.json"
 
-# Candidate means combat mechanics are implemented. Final RAW READY status is
-# granted only after the runtime template passes the complete source audit.
 _READY_BY_NAME = {
     "Allosaurus": "srd-allosaurus", "Ankylosaurus": "srd-ankylosaurus", "Archelon": "srd-archelon",
     "Awakened Shrub": "srd-awakened-shrub", "Axe Beak": "srd-axe-beak", "Baboon": "srd-baboon",
@@ -28,6 +27,9 @@ _READY_BY_NAME = {
     "Camel": "srd-camel", "Cat": "srd-cat", "Commoner": "srd-commoner", "Constrictor Snake": "srd-constrictor-snake",
     "Crab": "srd-crab", "Crocodile": "srd-crocodile", "Cultist": "srd-cultist", "Deer": "srd-deer", "Dire Wolf": "srd-dire-wolf",
     "Draft Horse": "srd-draft-horse", "Eagle": "srd-eagle", "Elk": "srd-elk", "Frog": "srd-frog", "Goat": "srd-goat",
+    "Black Dragon Wyrmling": "srd-black-dragon-wyrmling", "Blue Dragon Wyrmling": "srd-blue-dragon-wyrmling",
+    "Green Dragon Wyrmling": "srd-green-dragon-wyrmling", "Red Dragon Wyrmling": "srd-red-dragon-wyrmling",
+    "White Dragon Wyrmling": "srd-white-dragon-wyrmling", "Hell Hound": "srd-hell-hound",
     "Giant Badger": "srd-giant-badger", "Giant Bat": "srd-giant-bat", "Giant Boar": "srd-giant-boar",
     "Giant Centipede": "srd-giant-centipede", "Giant Constrictor Snake": "srd-giant-constrictor-snake",
     "Giant Crab": "srd-giant-crab", "Giant Crocodile": "srd-giant-crocodile",
@@ -95,7 +97,6 @@ def _canonical_monster_rows() -> tuple[dict[str, object], ...]:
 
 
 def load_monster_rows() -> list[dict[str, object]]:
-    """Return mutation-safe copies of the once-validated canonical SRD catalog."""
     return deepcopy(list(_canonical_monster_rows()))
 
 
@@ -111,11 +112,11 @@ def _runtime_monsters() -> dict[str, CombatantTemplate]:
 
 def _card(row: dict[str, object], runtime: dict[str, CombatantTemplate]) -> MonsterCatalogCard:
     name = str(row["name"])
-    candidate_id = _READY_BY_NAME.get(name)
+    candidate = candidate_id(name, _READY_BY_NAME)
     deferred = deferred_environment_reason(name)
-    blockers = [f"deferred-environment:{deferred}"] if deferred else ([] if candidate_id else ["monster-combat-mechanics-not-certified"])
-    if candidate_id and not deferred:
-        template = runtime.get(candidate_id)
+    blockers = [f"deferred-environment:{deferred}"] if deferred else ([] if candidate else ["monster-combat-mechanics-not-certified"])
+    if candidate and not deferred:
+        template = runtime.get(candidate)
         if template is None:
             blockers = ["missing-runtime-template"]
         else:
@@ -126,13 +127,13 @@ def _card(row: dict[str, object], runtime: dict[str, CombatantTemplate]) -> Mons
             except Exception:
                 logger.exception("Full SRD certification failed for %s.", name)
                 blockers = ["monster-source-audit-failed"]
-    raw_ready = bool(candidate_id and not blockers)
+    raw_ready = bool(candidate and not blockers)
     return MonsterCatalogCard(
         id=str(row["id"]), name=name, challenge_rating=str(row["challenge"]), monster_type=str(row["type"]),
         armor_class=str(row["armorClass"]), hit_points=str(row["hitPoints"]), speed=str(row["speed"]),
         source_page=int(row["sourcePage"]), source_reference=str(row["sourceReference"]),
         coverage_status=CoverageStatus.RAW_READY if raw_ready else CoverageStatus.BLOCKED,
-        runnable_template_id=candidate_id if raw_ready else None,
+        runnable_template_id=candidate if raw_ready else None,
         blockers=blockers,
     )
 

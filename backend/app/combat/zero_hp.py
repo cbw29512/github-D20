@@ -4,7 +4,7 @@ import logging
 from typing import Literal
 
 from app.combat.concentration import resolve_concentration_damage
-from app.combat.condition_immunity import condition_is_immune
+from app.combat.conditions import PRONE_EFFECT_ID, apply_condition
 from app.combat.dice import DiceProvider
 from app.combat.hit_points import effective_max_hp
 from app.combat.orc import use_relentless_endurance
@@ -18,7 +18,6 @@ ZeroHpOutcome = Literal[
     "damaged", "unconscious", "dead", "unchanged", "relentless_endurance", "undead_fortitude",
 ]
 DODGE_EFFECT_ID = "dodge"
-PRONE_EFFECT_ID = "prone"
 
 
 def reset_death_saves(state: CombatantState) -> None:
@@ -41,8 +40,7 @@ def _mark_unconscious(state: CombatantState) -> ZeroHpOutcome:
     state.is_unconscious = True
     state.is_stable = False
     state.active_effect_ids = [effect for effect in state.active_effect_ids if effect != DODGE_EFFECT_ID]
-    if not condition_is_immune(state, PRONE_EFFECT_ID) and PRONE_EFFECT_ID not in state.active_effect_ids:
-        state.active_effect_ids.append(PRONE_EFFECT_ID)
+    apply_condition(state, PRONE_EFFECT_ID)
     return "unconscious"
 
 

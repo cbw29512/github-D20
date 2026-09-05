@@ -5,11 +5,18 @@ from app.combat.barbarian import end_rage_if_incapacitated
 from app.combat.damage_defenses import apply_damage_defenses
 from app.combat.dice import DiceProvider
 from app.combat.grapple import apply_grapple
+from app.combat.resource_pool import resource_uses, spend_resource
 from app.combat.saving_throw_rolls import resolve_saving_throw
 from app.combat.zero_hp import apply_damage
 from app.domain.models import BattleEvent, DamageRollComponent, DamageType, DiceRoll, EncounterCombatant, SavingThrowAction
 from app.domain.runtime import CombatantState
 from app.domain.size import size_at_most
+
+
+def save_action_resource_available(state: CombatantState, action: SavingThrowAction) -> bool:
+    if action.resource_id is None:
+        return True
+    return resource_uses(state, action.resource_id) >= action.resource_cost
 
 
 def legal_save_action(action: SavingThrowAction, target: EncounterCombatant, distance_ft: int) -> bool:
@@ -36,12 +43,16 @@ def _damage_components(action: SavingThrowAction, dice: DiceProvider, succeeded:
 def resolve_save_action(
     sequence: int, round_number: int, actor: EncounterCombatant, target: EncounterCombatant,
     action: SavingThrowAction, distance_ft: int, dice: DiceProvider, *, spend_action: bool = True,
-    shared_damage_rolls: list[int] | None = None, affected_states: list[CombatantState] | None = None,
+    spend_resource_cost: bool = True, shared_damage_rolls: list[int] | None = None,
+    affected_states: list[CombatantState] | None = None,
 ) -> BattleEvent:
     if spend_action and not is_available(actor.state, "action"): raise ValueError("Action is not available for a saving throw action.")
+    if spend_resource_cost and not save_action_resource_available(actor.state, action): raise ValueError(f"{action.name} resource is unavailable.")
     if not legal_save_action(action, target, distance_ft): raise ValueError(f"{action.name} has no legal target at {distance_ft} feet.")
     save_roll, succeeded = resolve_saving_throw(target.state, action.save_ability, action.dc, dice)
     if spend_action: spend(actor.state, "action")
+    if spend_resource_cost and action.resource_id is not None:
+        spend_resource(actor.state, action.resource_id, action.resource_cost)
     hp_before = target.state.current_hp; temporary_hp_before = target.state.temporary_hp
     death_success_before = target.state.death_save_successes; death_failure_before = target.state.death_save_failures
     concentration_before = target.state.concentration.effect_id if target.state.concentration else None
@@ -74,5 +85,6 @@ def resolve_save_action(
         death_save_successes=target.state.death_save_successes, death_save_failures=target.state.death_save_failures,
         is_stable=target.state.is_stable, is_dead=target.state.is_dead, feature_id=action.id,
         concentration_ended_effect_id=concentration_before if concentration_before and target.state.concentration is None else None,
+        resource_remaining=(resource_uses(actor.state, action.resource_id) if action.resource_id else None),
         animation=action.animation, description=description,
     )

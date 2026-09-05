@@ -7,6 +7,7 @@ from app.combat.encounter_setup import build_encounter_setup
 from app.combat.healing import choose_healing_action, choose_healing_target, resolve_healing
 from app.combat.state import begin_turn
 from app.combat.zero_hp import apply_damage
+from app.content.healing_spell_effects import build_heal
 from app.domain.models import EncounterSelection, HealingAction
 
 
@@ -92,6 +93,25 @@ def test_action_and_bonus_action_self_heals_use_bloodied_threshold() -> None:
     healer.state.current_hp = healer.state.template.max_hp
     assert choose_healing_target(healer, setup, action_heal) is None
     assert choose_healing_target(healer, setup, bonus_heal) is None
+
+
+def test_heal_builder_and_condition_cleansing_are_raw() -> None:
+    action = build_heal()
+    assert action.healing_bonus == 70
+    assert action.resource_id == "spell-slot-6"
+    assert action.removable_conditions == ["blinded", "deafened", "poisoned"]
+
+    setup = _setup()
+    healer, ally = setup.heroes
+    ally.state.current_hp = ally.state.template.max_hp
+    ally.state.active_effect_ids.extend(["poisoned", "frightened"])
+    cleanse = action.model_copy(update={"resource_id": None})
+    assert choose_healing_target(healer, setup, cleanse) is ally
+    event = resolve_healing(1, 1, healer, ally, cleanse, FixedDiceProvider([1]))
+    assert event.hp_after == ally.state.template.max_hp
+    assert event.removed_condition_ids == ["poisoned"]
+    assert "poisoned" not in ally.state.active_effect_ids
+    assert "frightened" in ally.state.active_effect_ids
 
 
 def test_reaction_heal_is_not_used_proactively_on_the_healers_turn() -> None:

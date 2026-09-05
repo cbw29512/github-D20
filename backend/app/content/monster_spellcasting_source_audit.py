@@ -15,6 +15,11 @@ _SPELL_GROUP = re.compile(
     r"\b(?:At Will|\d+/Day(?: Each)?):\s*(.*?)(?=\s+(?:At Will|\d+/Day(?: Each)?):|$)",
     re.IGNORECASE,
 )
+_NEXT_ACTION_FEATURE = re.compile(
+    r"\s+[A-Z][A-Za-z’' -]{1,80}\.\s+"
+    r"(?:(?:Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)\s+Saving Throw:"
+    r"|(?:Melee|Ranged|Melee or Ranged)\s+Attack Roll:|Trigger:|Response:)",
+)
 # Explicitly certified as irrelevant to the standard flat/open Iron Pit outcome.
 # These spells are never selected as combat actions; unknown additions fail closed.
 _ARENA_NEUTRAL_SPELLS = frozenset({"Detect Evil and Good", "Detect Magic", "Clairvoyance"})
@@ -39,19 +44,55 @@ def spellcasting_fingerprint(row: dict[str, object]) -> str | None:
     return hashlib.sha256(text.encode("utf-8")).hexdigest() if text else None
 
 
-def _printed_spell_names(row: dict[str, object]) -> set[str]:
+def _outside_parentheses_prefix(text: str) -> str:
+    """Bound a printed spell list before punctuation or the next action feature."""
+    depth = 0
+    for index, char in enumerate(text):
+        if char == "(":
+            depth += 1
+            continue
+        if char == ")" and depth:
+            depth -= 1
+            continue
+        if depth:
+            continue
+        if _NEXT_ACTION_FEATURE.match(text, index):
+            return text[:index]
+        if char == ".":
+            return text[:index]
+    return text
+
+
+def _split_outside_parentheses(text: str) -> list[str]:
+    """Split spell-list commas without splitting explanatory spell parentheses."""
+    parts: list[str] = []
+    start = 0
+    depth = 0
+    for index, char in enumerate(text):
+        if char == "(":
+            depth += 1
+        elif char == ")" and depth:
+            depth -= 1
+        elif char == "," and depth == 0:
+            parts.append(text[start:index].strip())
+            start = index + 1
+    parts.append(text[start:].strip())
+    return [part for part in parts if part]
+
+
+def printed_spell_names(row: dict[str, object]) -> set[str]:
+    """Extract only spell-list entries; never consume prose from the next feature."""
     text = spellcasting_source_text(row)
-    return {
-        spell.strip()
-        for group in _SPELL_GROUP.findall(text)
-        for spell in group.split(",")
-        if spell.strip()
-    }
+    spells: set[str] = set()
+    for group in _SPELL_GROUP.findall(text):
+        bounded = _outside_parentheses_prefix(group)
+        spells.update(_split_outside_parentheses(bounded))
+    return spells
 
 
 def arena_neutral_spellcasting(row: dict[str, object]) -> bool:
     """True only when every parsed printed spell is explicitly certified arena-neutral."""
-    spells = _printed_spell_names(row)
+    spells = printed_spell_names(row)
     return bool(spells) and spells <= _ARENA_NEUTRAL_SPELLS
 
 

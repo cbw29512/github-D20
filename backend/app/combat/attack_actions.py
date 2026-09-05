@@ -5,6 +5,7 @@ import logging
 from app.combat.action_economy import is_available, spend
 from app.combat.ally_context import pack_tactics_active
 from app.combat.attack_action_rules import validate_attack_action_slots
+from app.combat.attack_resources import spend_attack_resource
 from app.combat.cleave import resolve_cleave_extra_attack
 from app.combat.dice import DiceProvider
 from app.combat.encounter_attacks import resolve_encounter_attack
@@ -20,7 +21,7 @@ from app.combat.pit_policy import (
     save_distance,
     target_order,
 )
-from app.combat.saving_throws import legal_save_action, resolve_save_action
+from app.combat.saving_throws import legal_save_action, resolve_save_action, save_action_resource_available
 from app.domain.encounters import EncounterCombatant, EncounterSetup
 from app.domain.models import BattleEvent, WeaponAttack, WeaponAttackKind
 
@@ -31,7 +32,7 @@ def _save_choice(attacker, setup, slot):
     allowed = set(slot.save_action_ids)
     for target in target_order(attacker, setup):
         for action in attacker.state.template.saving_throw_actions:
-            if action.id not in allowed:
+            if action.id not in allowed or not save_action_resource_available(attacker.state, action):
                 continue
             distance = save_distance(attacker, target, action.range_ft)
             if legal_save_action(action, target, distance):
@@ -41,10 +42,7 @@ def _save_choice(attacker, setup, slot):
 
 def _attack_choice(attacker, setup, slot, *, ranged_backline: bool = False):
     if ranged_backline:
-        choice = choose_attack(
-            attacker, setup, slot.attack_ids,
-            kind=WeaponAttackKind.RANGED, prefer_backline=True,
-        )
+        choice = choose_attack(attacker, setup, slot.attack_ids, kind=WeaponAttackKind.RANGED, prefer_backline=True)
         if choice is not None:
             return choice
     if is_backline(attacker) and allied_frontline_active(attacker, setup):
@@ -58,7 +56,6 @@ def _attack_choice(attacker, setup, slot, *, ranged_backline: bool = False):
 
 
 def _use_ranged_split(attacker, setup, slots, dice: DiceProvider) -> bool:
-    """Frontline mixed attackers have a 25% chance for one later shot at the enemy backline."""
     if is_backline(attacker):
         return False
     if not has_frontline_target(attacker, setup) or not has_backline_target(attacker, setup):
@@ -93,15 +90,11 @@ def resolve_attack_action(
         for index, slot in enumerate(definition.slots):
             if attacker.state.is_dead or attacker.state.is_unconscious:
                 break
-            split_this_slot = (
-                index > 0
-                and ranged_split
-                and not ranged_split_used
-                and flexible_slot_has_both(attacker, slot.attack_ids)
-            )
+            split_this_slot = index > 0 and ranged_split and not ranged_split_used and flexible_slot_has_both(attacker, slot.attack_ids)
             attack_choice = _attack_choice(attacker, setup, slot, ranged_backline=split_this_slot)
             if attack_choice is not None:
                 target, attack, distance = attack_choice
+                spend_attack_resource(attacker.state, attack)
                 if split_this_slot and attack.weapon.attack_kind is WeaponAttackKind.RANGED:
                     ranged_split_used = True
                 pack = pack_tactics_active(attacker, target, setup)
@@ -114,9 +107,7 @@ def resolve_attack_action(
                 )
                 events.append(event)
                 sequence += 1
-                cleave, sequence = resolve_cleave_extra_attack(
-                    sequence, round_number, attacker, event, attack, setup, dice, turn_key,
-                )
+                cleave, sequence = resolve_cleave_extra_attack(sequence, round_number, attacker, event, attack, setup, dice, turn_key)
                 events.extend(cleave)
                 if definition.is_attack_action and light_trigger is None and attack.weapon.light:
                     light_trigger = attack
@@ -133,9 +124,7 @@ def resolve_attack_action(
                 sequence += 1
 
         if definition.is_attack_action and light_trigger is not None:
-            more, sequence = resolve_light_extra_attack(
-                sequence, round_number, attacker, setup, dice, light_trigger, turn_key,
-            )
+            more, sequence = resolve_light_extra_attack(sequence, round_number, attacker, setup, dice, light_trigger, turn_key)
             events.extend(more)
         return events, sequence
     except ValueError:

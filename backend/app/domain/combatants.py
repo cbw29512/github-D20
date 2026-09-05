@@ -30,10 +30,23 @@ class VisualLoadout(BaseModel):
     body_style: str = "humanoid"
 
 
+class RechargeDefinition(BaseModel):
+    minimum: int = Field(ge=1)
+    maximum: int = Field(default=6, ge=1)
+    die_size: int = Field(default=6, ge=2)
+
+    @model_validator(mode="after")
+    def validate_range(self) -> "RechargeDefinition":
+        if self.minimum > self.maximum or self.maximum > self.die_size:
+            raise ValueError("Recharge range must fit within the recharge die.")
+        return self
+
+
 class ResourceDefinition(BaseModel):
     id: str
     name: str
     max_uses: int = Field(ge=0)
+    recharge: RechargeDefinition | None = None
 
 
 class CombatantTemplate(BaseModel):
